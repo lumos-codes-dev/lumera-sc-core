@@ -43,10 +43,12 @@ This repository contains the core smart contracts for the DFV ecosystem, built o
 ### Token Distribution
 
 The DFVToken has a total supply of **138,840,000,000 DFV tokens** distributed as follows:
+
 - Blind Believers: approx. 15% (20,828,377,491.30 tokens)
 - UNI V3 DFV/USDT: approx. 84.51% (117,334,651,306.91 tokens)
-- DAO Treasury: approx. 0.35% (491,353,345.96	tokens)
+- DAO Treasury: approx. 0.35% (491,353,345.96 tokens)
 - Community purchases: approx. 0.13% (185,617,855.83 tokens)
+
 ---
 
 <a id="architecture"></a>
@@ -225,8 +227,15 @@ npx hardhat verify --network sepolia <contract_address> <constructor_arg1> <cons
 ```
 
 **Example for DFVToken:**
+
 ```bash
 npx hardhat verify --network sepolia 0xYourTokenAddress 0xVestingAddress 0xUniAddress 0xDAOAddress
+```
+
+**TimeLock verification:**
+
+```bash
+npx hardhat verify --network ethereum --contract contracts/dao/TimeLock.sol:TimeLock --constructor-args scripts/deploy/tokenLockArgs.js 0xTimeLockAddress
 ```
 
 ---
@@ -332,11 +341,11 @@ The DFVToken contract implements a governance token with voting capabilities, pe
 
 #### Constructor Parameters
 
-| Parameter   | Type    | Description                                       |
-| ----------- | ------- | ------------------------------------------------- |
-| `vesting_`  | address | Vesting contract address (receives 15% of tokens) |
-| `uni_`      | address | Uniswap V3 pool address (receives 84.51% of tokens) |
-| `dao_`      | address | DAO treasury address (receives 0.35% of tokens)    |
+| Parameter  | Type    | Description                                         |
+| ---------- | ------- | --------------------------------------------------- |
+| `vesting_` | address | Vesting contract address (receives 15% of tokens)   |
+| `uni_`     | address | Uniswap V3 pool address (receives 84.51% of tokens) |
+| `dao_`     | address | DAO treasury address (receives 0.35% of tokens)     |
 
 #### Key Functions
 
@@ -384,11 +393,11 @@ The DFVVesting contract manages token vesting for different beneficiary categori
 
 #### Vesting Categories
 
-| Category          | Allocation          | Tokens per User | Max Participants |
-| ----------------- | ------------------- | --------------- | ---------------- |
-| Blind Believers   | 15% (20.83B tokens) | 694.2M tokens   | 28               |
-| BlindBelievers1   | Special allocation  | 694.195M tokens | 1                |
-| BlindBelievers2   | Special allocation  | 696.582M tokens | 1                |
+| Category        | Allocation          | Tokens per User | Max Participants |
+| --------------- | ------------------- | --------------- | ---------------- |
+| Blind Believers | 15% (20.83B tokens) | 694.2M tokens   | 28               |
+| BlindBelievers1 | Special allocation  | 694.195M tokens | 1                |
+| BlindBelievers2 | Special allocation  | 696.582M tokens | 1                |
 
 **Vesting Details:**
 

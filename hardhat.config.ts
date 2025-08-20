@@ -10,6 +10,7 @@ const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || "https://ethereum-rpc.pub
 const BASE_RPC_URL = process.env.BASE_RPC_URL || "https://mainnet.base.org";
 const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
+const BASESCAN_API_KEY = process.env.BASESCAN_API_KEY || "";
 const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY || "";
 
 const config: HardhatUserConfig = {
@@ -42,7 +43,9 @@ const config: HardhatUserConfig = {
 
   etherscan: {
     apiKey: {
+      mainnet: ETHERSCAN_API_KEY,
       ethereum: ETHERSCAN_API_KEY,
+      base: BASESCAN_API_KEY,
       sepolia: ETHERSCAN_API_KEY,
     },
   },
