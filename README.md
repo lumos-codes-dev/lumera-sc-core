@@ -1,532 +1,702 @@
-# 🚀 DFV Smart Contracts Core
+# 🚀 Lumera SC Core
 
-A comprehensive suite of smart contracts for the DFV ecosystem, including governance token, vesting mechanisms, and DAO functionalities.
+[![CI/CD](https://github.com/lumos-codes-dev/lumera-sc-core/actions/workflows/ci.yml/badge.svg)](https://github.com/lumos-codes-dev/lumera-sc-core/actions/workflows/ci.yml)
+
+Smart contract core for the Lumera protocol — governance token, staking, vesting, and DAO.
 
 ## 📋 Table of Contents
 
-- [🔍 Overview](#overview)
-- [🏗️ Architecture](#architecture)
-- [⚙️ Setup](#setup)
-- [🚀 Deployment](#deployment)
-- [📍 Deployed Contracts](#deployed-contracts)
-- [📄 Contract ABIs](#contract-abis)
-- [🧪 Testing](#testing)
-- [📊 Coverage](#coverage)
-- [📋 Smart Contracts](#smart-contracts)
-  - [DFVToken Contract](#dfvtoken-contract)
-  - [DFVVesting Contract](#dfvvesting-contract)
-  - [DFVDAO Contract](#dfvdao-contract)
-  - [TimeLock Contract](#timelock-contract)
-- [🔒 Security Features](#security-features)
-- [🤝 Contributing](#contributing)
-- [📄 License](#license)
-- [📞 Support](#support)
+- [🔍 Overview](#-overview)
+- [🏗️ Architecture](#️-architecture)
+- [⚙️ Setup](#️-setup)
+- [🚀 Deployment](#-deployment)
+- [📍 Deployed Contracts](#-deployed-contracts)
+- [📄 Contract ABIs](#-contract-abis)
+- [🧪 Testing](#-testing)
+- [📊 Coverage](#-coverage)
+- [📋 Contracts](#-contracts)
+  - [LURToken](#lurtoken)
+  - [LURStaking](#lurstaking)
+  - [LURVesting](#lurvesting)
+  - [LURDAO](#lurdao)
+  - [TimeLock](#timelock)
 
 ---
-
-<a id="overview"></a>
 
 ## 🔍 Overview
 
-This repository contains the core smart contracts for the DFV ecosystem, built on Solidity 0.8.28. The contracts enable organizations to manage a governance token with comprehensive vesting mechanisms and implement DAO governance functionalities. All contracts are designed with security best practices, implementing OpenZeppelin's proven patterns and security features.
+Lumera SC Core is the on-chain foundation of the Lumera protocol. It provides a governance token (LUR), a multi-pool staking system with time-lock and APR-based rewards, a flexible vesting system with cliff and period schedules, and a full on-chain DAO backed by a timelock controller.
+
+All contracts are written in Solidity 0.8.28 and built on top of OpenZeppelin v5. The staking contract is upgradeable via the UUPS proxy pattern.
 
 ### Key Features
 
-- **DFVToken Contract**: ERC20 governance token with voting capabilities and permit functionality
-- **DFVVesting Contract**: Comprehensive vesting system with multiple categories and flexible scheduling
-- **DFVDAO Contract**: Full governance framework with proposal creation, voting, and execution
-- **TimeLock Contract**: Secure delayed execution mechanism for governance proposals
-- **Security features**: Role-based access control, safe token transfers, comprehensive validation
-- **Gas optimized** with efficient storage patterns and batch operations
-- **Governance integration** with OpenZeppelin's Governor framework
-
-### Token Distribution
-
-The DFVToken has a total supply of **138,840,000,000 DFV tokens** distributed as follows:
-
-- Blind Believers: approx. 15% (20,828,377,491.30 tokens)
-- UNI V3 DFV/USDT: approx. 84.51% (117,334,651,306.91 tokens)
-- DAO Treasury: approx. 0.35% (491,353,345.96 tokens)
-- Community purchases: approx. 0.13% (185,617,855.83 tokens)
+- **Governance token**: ERC20 with on-chain voting power (`ERC20Votes`) and gasless approvals (`ERC20Permit`)
+- **Multi-pool staking**: Configurable lock durations and APR per pool, with per-user reward tracking
+- **Force unstake**: Users can exit before lock expiry at the cost of forfeiting rewards
+- **Vesting schedules**: Cliff + periodic unlock with optional immediate unlock percentage, batch creation supported
+- **On-chain DAO**: Governor with quorum, proposal threshold, voting delay/period, and timelock execution
+- **Emergency controls**: Global pause and per-pool staking/unstaking pause
 
 ---
-
-<a id="architecture"></a>
 
 ## 🏗️ Architecture
 
 ```
-DFV Smart Contracts Architecture
-├── DFVToken.sol
-│   ├── Inherits from:
-│   │   ├── ERC20 (Standard token functionality)
-│   │   ├── ERC20Permit (Gasless approvals via signatures)
-│   │   └── ERC20Votes (Governance voting power)
-│   │
-│   └── Core Features:
-│       ├── Governance Token with Voting Power
-│       ├── Permit Functionality (EIP-2612)
-│       ├── Delegation and Vote Tracking
-│       └── Initial Distribution to Key Addresses
+lumera-sc-core
+├── LURToken.sol               ERC20 + ERC20Votes + ERC20Permit
 │
-├── DFVVesting.sol
-│   ├── Inherits from:
-│   │   ├── AccessControl (Role-based permissions)
-│   │   └── IDFVVesting (Interface compliance)
-│   │
-│   └── Core Features:
-│       ├── Multiple Vesting Categories Management
-│       ├── Flexible Vesting Schedules
-│       ├── Batch Operations for Efficiency
-│       ├── Cliff and Linear Vesting Support
-│       ├── Emergency Controls and Validation
-│       └── Comprehensive Pool Management
+├── LURStaking.sol             UUPS upgradeable staking
+│   ├── Initializable
+│   ├── UUPSUpgradeable
+│   ├── ReentrancyGuardUpgradeable
+│   └── PausableExtUpgradeable (AccessControl + Pausable + PAUSER_ROLE)
 │
-├── DFVDAO.sol
-│   ├── Inherits from:
-│   │   ├── Governor (Core governance functionality)
-│   │   ├── GovernorSettings (Configurable parameters)
-│   │   ├── GovernorCountingSimple (Voting mechanism)
-│   │   ├── GovernorVotes (Token-based voting power)
-│   │   ├── GovernorVotesQuorumFraction (Quorum requirements)
-│   │   └── GovernorTimelockControl (Delayed execution)
-│   │
-│   └── Core Features:
-│       ├── Proposal Creation and Management
-│       ├── Token-weighted Voting System
-│       ├── Quorum and Threshold Requirements
-│       ├── Timelock Integration for Security
-│       └── Configurable Governance Parameters
+├── LURVesting.sol             Token vesting with cliff/period schedules
+│   └── AccessControl
 │
-├── TimeLock.sol
-│   ├── Inherits from:
-│   │   └── TimelockController (OpenZeppelin timelock)
-│   │
-│   └── Core Features:
-│       ├── Delayed Execution of Proposals
-│       ├── Multi-role Access Control
-│       ├── Proposer and Executor Management
-│       └── Minimum Delay Configuration
+├── dao/
+│   ├── LURDAO.sol             On-chain governor
+│   │   ├── Governor
+│   │   ├── GovernorSettings
+│   │   ├── GovernorCountingSimple
+│   │   ├── GovernorVotes
+│   │   ├── GovernorVotesQuorumFraction
+│   │   └── GovernorTimelockControl
+│   └── TimeLock.sol           TimelockController for DAO execution
 │
-├── interfaces/
-│   └── IDFVVesting.sol
+├── core/
+│   └── PausableExtUpgradeable.sol
 │
-└── dao/
-    ├── DFVDAO.sol
-    └── TimeLock.sol
+└── interfaces/
+    ├── ILURStaking.sol
+    └── ILURVesting.sol
 ```
 
-### System Flow Diagram
-
-The following diagram illustrates the complete ecosystem flow, showing how different components interact:
-
-![DFV Ecosystem Architecture](./docs/dfv-architecture-diagram.png)
-
-**Key Interactions:**
-
-- **Token Distribution**: DFV Token is distributed to Vesting, Treasury, and other stakeholders
-- **Vesting Management**: Multi-sig treasury wallet manages vesting pools for different user categories
-- **Governance Flow**: Token holders can propose and vote on DAO proposals
-- **Treasury Operations**: DAO can manage treasury funds and update parameters
-- **Web Interface**: Tally.xyz provides governance interface for proposal management
-
 ---
-
-<a id="setup"></a>
 
 ## ⚙️ Setup
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
-- npm or yarn
-- Git
+- Node.js v18+
+- npm
 
 ### Installation
 
-1. **Clone the repository:**
-
 ```bash
-git clone https://github.com/lumos-codes-dev/dfv-sc-core.git
-cd dfv-sc-core
-```
-
-2. **Install dependencies:**
-
-```bash
+git clone https://github.com/lumos-codes-dev/lumera-sc-core.git
+cd lumera-sc-core
 npm install
 ```
 
-3. **Configure environment variables:**
-   Copy `.env.example` to `.env` and fill in your values:
+### Environment variables
 
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
+Create a `.env` file in the root:
 
 ```env
-PRIVATE_KEY=your_private_key_here
+PRIVATE_KEY=your_deployer_private_key
+
 SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+MAINNET_RPC_URL=https://ethereum-rpc.publicnode.com
+
 ETHERSCAN_API_KEY=your_etherscan_api_key
-COINMARKETCAP_API_KEY=your_coinmarketcap_api_key
+
+# Optional: override defaults in the deploy script
+VESTING_MANAGER=0x...           # address that receives VESTING_MANAGER_ROLE (defaults to deployer)
+TEST_VESTING_BENEFICIARY=0x...  # recipient of the test vesting pool (defaults to deployer)
 ```
 
-4. **Compile contracts:**
+### Compile
 
 ```bash
-npx hardhat compile
+npm run compile
 ```
 
 ---
 
-<a id="deployment"></a>
-
 ## 🚀 Deployment
-
-The contracts are deployed using Hardhat deployment scripts. Deploy to different networks:
-
-### Local Development
-
-```bash
-npx hardhat run scripts/deploy/sepolia.ts --network hardhat
-```
-
-### Sepolia Testnet
 
 ```bash
 npx hardhat run scripts/deploy/sepolia.ts --network sepolia
 ```
 
-### Ethereum Mainnet
+### Deployment order
 
-```bash
-npx hardhat run scripts/deploy/mainnet.ts --network ethereum
-```
+1. **LURToken** — minted to deployer
+2. **TimeLock** — deployer as temporary admin
+3. **LURDAO** — wired to LURToken (votes) and TimeLock
+4. **LURVesting** — DAO as admin, `VESTING_MANAGER` as operator
+5. **LURStaking** — UUPS proxy, deployer as admin
+6. TimeLock `PROPOSER_ROLE` + `EXECUTOR_ROLE` granted to DAO
+7. Three staking pools created; staking contract funded with reward reserves
+8. Test vesting pool created (1 token/second, 1 000 s total)
+9. All contracts verified on Etherscan
 
-### Base Mainnet
+### Staking pools (Sepolia)
 
-```bash
-npx hardhat run scripts/deploy/base.ts --network base
-```
+| Pool             | Lock     | APR  |
+| ---------------- | -------- | ---- |
+| LUR 1-Month Lock | 30 days  | 75%  |
+| LUR 6-Month Lock | 180 days | 100% |
+| LUR 1-Year Lock  | 365 days | 125% |
 
-### Supported Networks
+### Post-deployment (production)
 
-- `hardhat` (local development)
-- `sepolia` (Ethereum testnet)
-- `ethereum` (Ethereum mainnet)
-- `base` (Base mainnet)
+After governance is fully operational, revoke the deployer's `DEFAULT_ADMIN_ROLE` on TimeLock:
 
-### Verification
-
-To verify deployed contracts on Etherscan:
-
-```bash
-npx hardhat verify --network sepolia <contract_address> <constructor_arg1> <constructor_arg2>
-```
-
-**Example for DFVToken:**
-
-```bash
-npx hardhat verify --network sepolia 0xYourTokenAddress 0xVestingAddress 0xUniAddress 0xDAOAddress
-```
-
-**TimeLock verification:**
-
-```bash
-npx hardhat verify --network ethereum --contract contracts/dao/TimeLock.sol:TimeLock --constructor-args scripts/deploy/tokenLockArgs.js 0xTimeLockAddress
+```ts
+await timeLock.renounceRole(
+  await timeLock.DEFAULT_ADMIN_ROLE(),
+  deployerAddress
+);
 ```
 
 ---
-
-<a id="deployed-contracts"></a>
 
 ## 📍 Deployed Contracts
 
-_Deployment addresses will be updated after mainnet deployment_
+### Sepolia (Chain ID: 11155111)
 
-| Contract   | Network | Address | Explorer Link |
-| ---------- | ------- | ------- | ------------- |
-| DFVToken   | Sepolia | TBD     | TBD           |
-| DFVVesting | Sepolia | TBD     | TBD           |
-| DFVDAO     | Sepolia | TBD     | TBD           |
-| TimeLock   | Sepolia | TBD     | TBD           |
+| Contract           | Address                                      | Explorer                                                                                |
+| ------------------ | -------------------------------------------- | --------------------------------------------------------------------------------------- |
+| LURToken           | `0xD1E4E8067fFAacc787342342884c53a10D2877E9` | [View](https://sepolia.etherscan.io/address/0xD1E4E8067fFAacc787342342884c53a10D2877E9) |
+| TimeLock           | `0x88EFaa1798905F37eE5A8FFE7Fe2139284b6A9e8` | [View](https://sepolia.etherscan.io/address/0x88EFaa1798905F37eE5A8FFE7Fe2139284b6A9e8) |
+| LURDAO             | `0x4B8563F7A61dcAc36D1315C978BCF3FF59d6D398` | [View](https://sepolia.etherscan.io/address/0x4B8563F7A61dcAc36D1315C978BCF3FF59d6D398) |
+| LURVesting         | `0xbE3E183D493CCD94c84A2E1ba06aef2e3E8cFf7D` | [View](https://sepolia.etherscan.io/address/0xbE3E183D493CCD94c84A2E1ba06aef2e3E8cFf7D) |
+| LURStaking (proxy) | `0xB99a627e78C96aa323496eF250E6ca87B13c65a5` | [View](https://sepolia.etherscan.io/address/0xB99a627e78C96aa323496eF250E6ca87B13c65a5) |
+| LURStaking (impl)  | `0x26F2500694397Ea642110557bC8FAA99E2722775` | [View](https://sepolia.etherscan.io/address/0x26F2500694397Ea642110557bC8FAA99E2722775) |
 
 ---
-
-<a id="contract-abis"></a>
 
 ## 📄 Contract ABIs
 
-The compiled contract ABIs are available in the `artifacts/contracts/` directory after compilation:
+ABI files for all contracts are located in the [`abi/`](./abi) directory.
 
-- **DFVToken ABI:** `artifacts/contracts/DFVToken.sol/DFVToken.json`
-- **DFVVesting ABI:** `artifacts/contracts/DFVVesting.sol/DFVVesting.json`
-- **DFVDAO ABI:** `artifacts/contracts/dao/DFVDAO.sol/DFVDAO.json`
-- **TimeLock ABI:** `artifacts/contracts/dao/TimeLock.sol/TimeLock.json`
+| Contract   | File                                           |
+| ---------- | ---------------------------------------------- |
+| LURToken   | [`abi/LURToken.json`](./abi/LURToken.json)     |
+| LURStaking | [`abi/LURStaking.json`](./abi/LURStaking.json) |
+| LURVesting | [`abi/LURVesting.json`](./abi/LURVesting.json) |
+| LURDAO     | [`abi/LURDAO.json`](./abi/LURDAO.json)         |
+| TimeLock   | [`abi/TimeLock.json`](./abi/TimeLock.json)     |
 
-### TypeChain Integration
+> **LURStaking** — interact via the **proxy address**, not the implementation. The ABI is the same regardless of which implementation is deployed.
 
-TypeScript types are automatically generated and available in the `typechain-types/` directory for type-safe contract interactions.
+### Quick start (ethers.js)
+
+```ts
+import { ethers } from "ethers";
+import LURTokenABI from "./abi/LURToken.json";
+import LURStakingABI from "./abi/LURStaking.json";
+import LURVestingABI from "./abi/LURVesting.json";
+import LURDAOABI from "./abi/LURDAO.json";
+import TimeLockABI from "./abi/TimeLock.json";
+
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+
+const lurToken = new ethers.Contract(LUR_TOKEN_ADDRESS, LURTokenABI, signer);
+const staking = new ethers.Contract(LUR_STAKING_PROXY, LURStakingABI, signer);
+const vesting = new ethers.Contract(LUR_VESTING_ADDRESS, LURVestingABI, signer);
+const dao = new ethers.Contract(LUR_DAO_ADDRESS, LURDAOABI, signer);
+const timeLock = new ethers.Contract(TIME_LOCK_ADDRESS, TimeLockABI, signer);
+```
 
 ---
 
-<a id="testing"></a>
-
 ## 🧪 Testing
-
-### Run All Tests
 
 ```bash
 npm run test
 ```
 
-### Run Specific Test Files
-
 ```bash
-npx hardhat test test/DFVToken.test.ts
-npx hardhat test test/DFVVesting.test.ts
-npx hardhat test test/DFVDAO.test.ts
+npx hardhat test test/LURToken.test.ts
+npx hardhat test test/LURStaking.test.ts
+npx hardhat test test/LURVesting.test.ts
+npx hardhat test test/LURDAO.test.ts
 ```
-
-### Run Tests with Gas Reporting
-
-Gas reporting is enabled by default and includes:
-
-- USD currency reporting
-- CoinMarketCap integration for real-time pricing
 
 ---
 
-<a id="coverage"></a>
-
 ## 📊 Coverage
-
-### Generate Coverage Report
 
 ```bash
 npm run coverage
 ```
 
-This will:
+Reports are generated in `coverage/`:
 
-1. Execute all tests with coverage tracking
-2. Generate coverage reports in multiple formats:
-   - HTML report: `coverage/index.html`
-   - LCOV report: `coverage/lcov-report/index.html`
-   - JSON data: `coverage/coverage-final.json`
-
-### View Coverage
-
-Open `coverage/index.html` in your browser for detailed coverage analysis including line, branch, function, and statement coverage.
+- `coverage/index.html` — HTML report
+- `coverage/lcov-report/index.html` — LCOV report
+- `coverage/coverage-final.json` — JSON data
 
 ---
 
-<a id="smart-contracts"></a>
+## 📋 Contracts
 
-## 📋 Smart Contracts
+### Frontend integration notes
 
-### DFVToken Contract
-
-The DFVToken contract implements a governance token with voting capabilities, permit functionality, and initial distribution to key ecosystem participants.
-
-#### Key Features
-
-- **ERC20 Standard** with 18 decimals and total supply of 138,840,000,000 tokens
-- **Governance Integration** with vote delegation and tracking capabilities
-- **Permit Functionality** for gasless approvals using EIP-2612 signatures
-- **Initial Distribution** to vesting, treasury, team, and VC addresses
-- **Vote Power Tracking** for DAO governance participation
-
-#### Constructor Parameters
-
-| Parameter  | Type    | Description                                         |
-| ---------- | ------- | --------------------------------------------------- |
-| `vesting_` | address | Vesting contract address (receives 15% of tokens)   |
-| `uni_`     | address | Uniswap V3 pool address (receives 84.51% of tokens) |
-| `dao_`     | address | DAO treasury address (receives 0.35% of tokens)     |
-
-#### Key Functions
-
-**Standard ERC20 Functions:**
-| Function | Description |
-| ------------------------------------------- | ------------------------------------------ |
-| `transfer(address to, uint256 amount)` | Transfers tokens to specified address |
-| `approve(address spender, uint256 amount)` | Approves spender to use tokens |
-| `balanceOf(address account)` | Returns token balance of account |
-| `totalSupply()` | Returns total token supply |
-
-**Governance Functions (ERC20Votes):**
-| Function | Description |
-| ---------------------------------------------------- | ---------------------------------------------- |
-| `delegate(address delegatee)` | Delegates voting power to specified address |
-| `getVotes(address account)` | Gets current voting power of account |
-| `getPastVotes(address account, uint256 timepoint)` | Gets voting power at specific timepoint |
-| `getPastTotalSupply(uint256 timepoint)` | Gets total supply at specific timepoint |
-
-**Permit Functions (ERC20Permit):**
-| Function | Description |
-| ---------------------------------------------------- | ---------------------------------------------- |
-| `permit(...)` | Enables gasless token approvals via signatures |
-| `nonces(address owner)` | Returns current nonce for permit functionality |
-| `DOMAIN_SEPARATOR()` | Returns EIP-712 domain separator |
-
-**Clock Functions:**
-| Function | Description |
-| --------------- | ------------------------------------- |
-| `clock()` | Returns current timestamp |
-| `CLOCK_MODE()` | Returns clock mode ("mode=timestamp") |
-
-### DFVVesting Contract
-
-The DFVVesting contract manages token vesting for different beneficiary categories with flexible scheduling and comprehensive controls.
-
-#### Key Features
-
-- **Multiple Vesting Categories** with distinct rules and allocations
-- **Flexible Vesting Schedules** supporting cliff periods and linear vesting
-- **Batch Operations** for efficient management of multiple beneficiaries
-- **Role-based Access Control** with admin and manager roles
-- **Emergency Controls** for pausing and emergency withdrawals
-- **Comprehensive Validation** to prevent over-allocation and ensure fair distribution
-
-#### Vesting Categories
-
-| Category        | Allocation          | Tokens per User | Max Participants |
-| --------------- | ------------------- | --------------- | ---------------- |
-| Blind Believers | 15% (20.83B tokens) | 694.2M tokens   | 28               |
-| BlindBelievers1 | Special allocation  | 694.195M tokens | 1                |
-| BlindBelievers2 | Special allocation  | 696.582M tokens | 1                |
-
-**Vesting Details:**
-
-- **Cliff Period**: 1 year (31,536,000 seconds)
-- **Vesting Duration**: 5 years (157,680,000 seconds) with 1-second periods
-- **Initial Unlock**: 0% (no immediate unlock after cliff)
-
-#### Administrative Functions
-
-| Function                            | Access  | Description                                           |
-| ----------------------------------- | ------- | ----------------------------------------------------- |
-| `setVestingToken(address token_)`   | Manager | Sets the vesting token address                        |
-| `createCategoryPool(...)`           | Manager | Creates new vesting pool for specific category        |
-| `createCustomVestingPool(...)`      | Manager | Creates custom vesting pool for beneficiary           |
-| `createCustomVestingPoolBatch(...)` | Manager | Creates multiple custom pools in single transaction   |
-| `createCategoryPoolBatch(...)`      | Manager | Creates multiple category pools in single transaction |
-| `withdrawUnusedTokens(...)`         | Admin   | Withdraws unused tokens from contract                 |
-
-#### User Functions
-
-| Function                                  | Description                                    |
-| ----------------------------------------- | ---------------------------------------------- |
-| `claim()`                                 | Claims available vested tokens for caller      |
-| `claimFor(address beneficiary)`           | Claims available vested tokens for beneficiary |
-| `getClaimableAmount(address beneficiary)` | Calculates currently claimable tokens          |
-
-### DFVDAO Contract
-
-The DFVDAO contract implements a comprehensive governance system using OpenZeppelin's Governor framework with timelock security.
-
-#### Key Features
-
-- **Proposal Management** with creation, voting, and execution phases
-- **Token-weighted Voting** based on DFV token holdings and delegation
-- **Quorum Requirements** ensuring sufficient participation for valid decisions
-- **Timelock Integration** providing security delay for proposal execution
-- **Configurable Parameters** for voting delays, periods, and thresholds
-
-#### Key Functions
-
-| Function                                      | Description                                 |
-| --------------------------------------------- | ------------------------------------------- |
-| `propose(...)`                                | Creates new governance proposal             |
-| `castVote(uint256 proposalId, uint8 support)` | Casts vote on proposal                      |
-| `execute(...)`                                | Executes approved proposal after timelock   |
-| `proposalThreshold()`                         | Returns minimum tokens needed for proposals |
-| `quorum(uint256 blockNumber)`                 | Calculates required quorum at block         |
-
-### TimeLock Contract
-
-The TimeLock contract provides secure delayed execution for governance proposals, ensuring community has time to react to approved changes.
-
-#### Key Features
-
-- **Delayed Execution** with configurable minimum delay
-- **Role-based Access Control** with proposer and executor roles
-- **Multi-signature Support** through role-based permissions
-- **Cancellation Capability** for emergency situations
-
-#### Configuration
-
-| Parameter   | Description                                   |
-| ----------- | --------------------------------------------- |
-| `minDelay`  | Minimum time delay before execution (seconds) |
-| `proposers` | Addresses allowed to schedule operations      |
-| `executors` | Addresses allowed to execute operations       |
-| `admin`     | Address with administrative privileges        |
+> **Token amounts** — all amount values (`uint256`) are in the token's smallest unit (18 decimals). Use `ethers.formatUnits(value, 18)` to display and `ethers.parseUnits(amount, 18)` to send.
+>
+> **Timestamps** — all timestamp values (`uint256`) are Unix seconds. Multiply by 1 000 to get a JS `Date` (`new Date(Number(lockUntil) * 1000)`).
+>
+> **APR (basis points)** — APR values use BPS where `10 000 = 100%`. To display: `apr / 100`. Example: `7500 → 75%`.
+>
+> **LURStaking proxy** — always interact via the **proxy address**, never the implementation address directly.
+>
+> **Approvals** — `stake()` and `createVestingPool()` pull tokens from the caller. You must call `lurToken.approve(contractAddress, amount)` first.
 
 ---
 
-<a id="security-features"></a>
+### LURToken
 
-## 🔒 Security Features
+Standard ERC20 with on-chain voting power and gasless permit approvals. Fixed supply minted to `initialOwner` at construction.
 
-### Access Control
+#### TypeScript interface
 
-- Role-based permissions using OpenZeppelin's AccessControl
-- Multi-signature support through timelock mechanism
-- Emergency pause functionality for critical situations
+```ts
+interface LURToken {
+  // ── ERC20 standard ────────────────────────────────────────────────────────
+  name(): Promise<string>;
+  symbol(): Promise<string>;
+  decimals(): Promise<number>; // always 18
+  totalSupply(): Promise<bigint>; // wei
+  balanceOf(account: string): Promise<bigint>; // wei
+  allowance(owner: string, spender: string): Promise<bigint>; // wei
+  approve(
+    spender: string,
+    amount: bigint
+  ): Promise<ContractTransactionResponse>;
+  transfer(to: string, amount: bigint): Promise<ContractTransactionResponse>;
+  transferFrom(
+    from: string,
+    to: string,
+    amount: bigint
+  ): Promise<ContractTransactionResponse>;
 
-### Input Validation
+  // ── ERC20Votes ────────────────────────────────────────────────────────────
+  // Users must delegate to themselves (or anyone) before their balance counts as voting power.
+  delegate(delegatee: string): Promise<ContractTransactionResponse>;
+  delegates(account: string): Promise<string>; // current delegatee
+  getVotes(account: string): Promise<bigint>; // current voting power, wei
+  getPastVotes(account: string, timepoint: bigint): Promise<bigint>; // voting power at timestamp
 
-- Comprehensive parameter validation in all functions
-- Zero address checks and boundary validations
-- Overflow protection with Solidity 0.8+ built-in checks
+  // ── ERC20Permit ───────────────────────────────────────────────────────────
+  nonces(owner: string): Promise<bigint>;
+  permit(
+    owner: string,
+    spender: string,
+    value: bigint,
+    deadline: bigint,
+    v: number,
+    r: string,
+    s: string
+  ): Promise<ContractTransactionResponse>;
 
-### Reentrancy Protection
+  // ── Clock ─────────────────────────────────────────────────────────────────
+  clock(): Promise<number>; // current block.timestamp as uint48
+  CLOCK_MODE(): Promise<string>; // "mode=timestamp"
+}
+```
 
-- SafeERC20 for all token transfers
-- Proper state updates before external calls
-- Validated interaction patterns
+#### Events
 
-### Testing & Auditing
-
-- Comprehensive test suite with >95% coverage
-- Gas optimization and efficiency testing
-- Integration tests for complex workflows
+| Signature                                                                         | Indexed params     | Description                              |
+| --------------------------------------------------------------------------------- | ------------------ | ---------------------------------------- |
+| `Transfer(address from, address to, uint256 value)`                               | `from`, `to`       | Any token transfer including mints/burns |
+| `Approval(address owner, address spender, uint256 value)`                         | `owner`, `spender` | Approval changed                         |
+| `DelegateChanged(address delegator, address fromDelegate, address toDelegate)`    | `delegator`        | Voting delegation changed                |
+| `DelegateVotesChanged(address delegate, uint256 previousVotes, uint256 newVotes)` | `delegate`         | Voting power checkpoint recorded         |
 
 ---
 
-<a id="contributing"></a>
+### LURStaking
 
-## 🤝 Contributing
+UUPS-upgradeable multi-pool staking. Rewards are paid in the same token as the staked token and are calculated as:
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+```
+reward = stakedAmount × (apr / 10000) × (lockDuration / 365days)
+```
+
+Rewards are distributed on `unstake()`. The contract must hold enough tokens to cover all pending rewards — fund it after deployment.
+
+#### Roles
+
+| Role constant        | `keccak256` value              | Who can call                              |
+| -------------------- | ------------------------------ | ----------------------------------------- |
+| `DEFAULT_ADMIN_ROLE` | `0x00…00` (bytes32 zero)       | Create pools, manage roles, upgrade proxy |
+| `PAUSER_ROLE`        | `keccak256("PAUSER_ROLE")`     | `pause()` / `unpause()`                   |
+| `WITHDRAWER_ROLE`    | `keccak256("WITHDRAWER_ROLE")` | `refund()`                                |
+
+#### TypeScript interface
+
+```ts
+// ── Structs ────────────────────────────────────────────────────────────────────
+
+interface Pool {
+  name: string; // pool display name
+  token: string; // ERC20 token address
+  apr: number; // reward rate in BPS (7500 = 75%)
+  lockDuration: number; // lock duration in seconds (e.g. 2592000 = 30 days)
+  minStakeAmount: bigint; // minimum stake in wei
+  maxStakeAmount: bigint; // maximum stake in wei
+  stakingPaused: boolean;
+  unstakingPaused: boolean;
+  totalStaked: bigint; // total currently staked in wei
+}
+
+interface UserPoolExtended extends Pool {
+  id: bigint; // pool index (0-based)
+  stakedByUser: bigint; // user's staked balance in wei
+  stakedByUserAt: number; // Unix timestamp when the user last staked (0 if never)
+  lockedUntilForUser: number; // Unix timestamp when the user's lock expires (0 if never staked)
+  pendingRewards: bigint; // rewards the user will receive on unstake, in wei
+  isTokensLocked: boolean; // true if block.timestamp < lockedUntilForUser
+}
+
+interface CreatePoolParams {
+  name: string;
+  token: string; // ERC20 address
+  apr: number; // BPS (10000 = 100%)
+  lockDuration: number; // seconds
+  minStakeAmount: bigint; // wei
+  maxStakeAmount: bigint; // wei
+}
+
+// ── Contract ───────────────────────────────────────────────────────────────────
+
+interface LURStaking {
+  // ── View ──────────────────────────────────────────────────────────────────
+  getTotalPools(): Promise<bigint>;
+  getPool(poolId: bigint): Promise<Pool>;
+  getPools(
+    user: string, // pass ethers.ZeroAddress if no user context needed
+    offset: bigint,
+    limit: bigint
+  ): Promise<UserPoolExtended[]>;
+  getUserStakeDetails(
+    user: string,
+    poolId: bigint
+  ): Promise<{
+    staked: bigint; // wei
+    lockUntil: bigint; // Unix timestamp (seconds)
+    pendingRewards: bigint; // wei
+    isLocked: boolean;
+  }>;
+  paused(): Promise<boolean>;
+  hasRole(role: string, account: string): Promise<boolean>;
+
+  // ── User actions ──────────────────────────────────────────────────────────
+  // Requires prior: lurToken.approve(stakingAddress, amount)
+  stake(poolId: bigint, amount: bigint): Promise<ContractTransactionResponse>;
+  unstake(poolId: bigint, force: boolean): Promise<ContractTransactionResponse>;
+
+  // ── Admin ─────────────────────────────────────────────────────────────────
+  createPool(params: CreatePoolParams): Promise<ContractTransactionResponse>;
+  setStakingPaused(
+    poolId: bigint,
+    paused: boolean
+  ): Promise<ContractTransactionResponse>;
+  setUnstakingPaused(
+    poolId: bigint,
+    paused: boolean
+  ): Promise<ContractTransactionResponse>;
+  pause(): Promise<ContractTransactionResponse>;
+  unpause(): Promise<ContractTransactionResponse>;
+  refund(
+    token: string,
+    to: string,
+    amount: bigint
+  ): Promise<ContractTransactionResponse>;
+  // token = ethers.ZeroAddress to refund ETH
+}
+```
+
+#### Usage examples
+
+```ts
+import { ethers } from "ethers";
+
+const staking = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, signer);
+const token = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, signer);
+
+// List all pools for the connected user (paginated)
+const pools = await staking.getPools(userAddress, 0n, 10n);
+// pools[0].apr / 100  → displayed APR %
+// ethers.formatUnits(pools[0].minStakeAmount, 18)  → minimum stake in LUR
+
+// Stake 100 LUR in pool 0
+const amount = ethers.parseUnits("100", 18);
+await token.approve(STAKING_ADDRESS, amount);
+await staking.stake(0n, amount);
+
+// Unstake normally (after lock expires)
+await staking.unstake(0n, false);
+
+// Force unstake before lock expires (forfeits rewards)
+await staking.unstake(0n, true);
+
+// Get a specific user's live stake details
+const { staked, lockUntil, pendingRewards, isLocked } =
+  await staking.getUserStakeDetails(userAddress, 0n);
+const lockDate = new Date(Number(lockUntil) * 1000);
+```
+
+#### Events
+
+| Signature                                                                                                 | Indexed                   | Description                                                     |
+| --------------------------------------------------------------------------------------------------------- | ------------------------- | --------------------------------------------------------------- |
+| `PoolCreated(uint256 poolId, address token)`                                                              | `poolId`, `token`         | New pool created                                                |
+| `Staked(address user, uint256 poolId, address token, uint256 amount, uint256 lockUntil, uint256 rewards)` | `user`, `poolId`, `token` | Tokens staked; `rewards` is the projected reward at lock expiry |
+| `Unstaked(address user, uint256 poolId, address token, uint256 amount, uint256 rewards, bool forced)`     | `user`, `poolId`, `token` | Tokens unstaked; `rewards = 0` when `forced = true`             |
+| `StakingPausedUpdated(uint256 poolId, bool paused)`                                                       | `poolId`, `paused`        | Per-pool staking pause toggled                                  |
+| `UnstakingPausedUpdated(uint256 poolId, bool paused)`                                                     | `poolId`, `paused`        | Per-pool unstaking pause toggled                                |
+| `Refund(address token, address to, uint256 amount)`                                                       | `token`, `to`, `amount`   | Admin withdrawal                                                |
+| `Paused(address account)` / `Unpaused(address account)`                                                   | `account`                 | Global pause state changed                                      |
+
+#### Errors
+
+| Error                                                  | Thrown when                                                     |
+| ------------------------------------------------------ | --------------------------------------------------------------- |
+| `LURStaking__ZeroAddress`                              | A required address argument is `address(0)`                     |
+| `LURStaking__InvalidName`                              | Pool name is empty or longer than 64 characters                 |
+| `LURStaking__ZeroAmount`                               | Amount argument is `0`                                          |
+| `LURStaking__InvalidAmounts`                           | `minStakeAmount > maxStakeAmount`                               |
+| `LURStaking__PoolNotExists`                            | `poolId >= totalPools`                                          |
+| `LURStaking__StakingPaused`                            | Pool staking is paused (or global pause is on)                  |
+| `LURStaking__UnstakingPaused`                          | Pool unstaking is paused (or global pause is on)                |
+| `LURStaking__AmountTooLow`                             | `userStake + amount < minStakeAmount`                           |
+| `LURStaking__AmountTooHigh`                            | `userStake + amount > maxStakeAmount`                           |
+| `LURStaking__TokensLocked`                             | Non-forced unstake called before `lockUntil`                    |
+| `LURStaking__WithdrawAmountExceedsWithdrawableBalance` | `refund()` would reduce balance below staked + reserved rewards |
+| `LURStaking__TransferFailed`                           | ETH transfer in `refund()` failed                               |
 
 ---
 
-<a id="license"></a>
+### LURVesting
 
-## 📄 License
+Token vesting contract. Each recipient can have multiple independent pools. Tokens unlock according to a cliff + periodic schedule, with an optional immediate unlock on cliff end.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**Unlock formula:**
+
+```
+cliffEnd = start + cliffDuration
+
+// Before cliff end: 0 tokens claimable
+// After cliff end:
+  passedPeriods = floor((now - start - cliffDuration) / periodDuration)
+  initialAmount = totalAmount × (initialUnlockPercent / 10000)
+
+  if passedPeriods >= periodCount:
+    unlocked = totalAmount
+  else:
+    unlocked = ((totalAmount - initialAmount) × passedPeriods / periodCount) + initialAmount
+
+claimable = unlocked - alreadyClaimed
+```
+
+#### TypeScript interface
+
+```ts
+// ── Structs ────────────────────────────────────────────────────────────────────
+
+interface Schedule {
+  cliffDuration: bigint; // seconds before any tokens unlock
+  periodDuration: bigint; // seconds per unlock period
+  periodCount: bigint; // total number of unlock periods
+}
+
+interface VestingPool {
+  amount: bigint; // total tokens in this pool, wei
+  start: bigint; // Unix timestamp vesting started
+  schedule: Schedule;
+  initialUnlockPercent: bigint; // BPS (e.g. 1000 = 10% unlocked right after cliff)
+  claimed: bigint; // tokens already claimed, wei
+}
+
+interface CreateVestingPoolParams {
+  recipient: string;
+  amount: bigint; // wei; caller must have approved this amount
+  start: bigint; // Unix timestamp; if < block.timestamp, clamped to now
+  schedule: Schedule;
+  initialUnlockPercent: bigint; // BPS 0–10000
+}
+
+// ── Contract ───────────────────────────────────────────────────────────────────
+
+interface LURVesting {
+  // ── View ──────────────────────────────────────────────────────────────────
+  token(): Promise<string>; // LURToken address
+  totalVested(): Promise<bigint>; // total reserved across all pools, wei
+  getClaimableAmount(recipient: string): Promise<bigint>; // claimable right now, wei
+  pools(recipient: string, index: bigint): Promise<VestingPool>; // single pool by index
+
+  hasRole(role: string, account: string): Promise<boolean>;
+
+  // ── User actions ──────────────────────────────────────────────────────────
+  claim(): Promise<ContractTransactionResponse>;
+  claimFor(recipient: string): Promise<ContractTransactionResponse>;
+
+  // ── Manager ───────────────────────────────────────────────────────────────
+  // Requires prior: lurToken.approve(vestingAddress, params.amount)
+  createVestingPool(
+    params: CreateVestingPoolParams
+  ): Promise<ContractTransactionResponse>;
+  createVestingPoolBatch(
+    params: CreateVestingPoolParams[]
+  ): Promise<ContractTransactionResponse>;
+  refund(
+    tokenAddress: string,
+    recipient: string,
+    amount: bigint
+  ): Promise<ContractTransactionResponse>;
+}
+```
+
+#### Usage examples
+
+```ts
+import { ethers } from "ethers";
+
+const vesting = new ethers.Contract(VESTING_ADDRESS, VESTING_ABI, signer);
+const token = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, signer);
+
+// How much can the user claim right now?
+const claimable = await vesting.getClaimableAmount(userAddress);
+console.log(ethers.formatUnits(claimable, 18), "LUR claimable");
+
+// Claim
+await vesting.claim();
+
+// Read a specific pool (index 0)
+const pool = await vesting.pools(userAddress, 0n);
+const percentClaimed = Number((pool.claimed * 100n) / pool.amount); // rough %
+
+// Create a vesting pool (manager role required)
+// 1000 LUR, unlocks 1 token/second over 1000 seconds, no cliff
+const amount = ethers.parseUnits("1000", 18);
+await token.approve(VESTING_ADDRESS, amount);
+await vesting.createVestingPool({
+  recipient: "0x...",
+  amount,
+  start: BigInt(Math.floor(Date.now() / 1000)),
+  schedule: {
+    cliffDuration: 0n,
+    periodDuration: 1n,
+    periodCount: 1000n,
+  },
+  initialUnlockPercent: 0n,
+});
+```
+
+#### Events
+
+| Signature                                                  | Indexed                        | Description                                               |
+| ---------------------------------------------------------- | ------------------------------ | --------------------------------------------------------- |
+| `VestingPoolCreated(address recipient, Pool pool)`         | `recipient`                    | New vesting pool created; `pool` contains the full struct |
+| `Claim(address recipient, uint256 amount)`                 | `recipient`, `amount`          | Tokens claimed                                            |
+| `Refund(address token, address recipient, uint256 amount)` | `token`, `recipient`, `amount` | Manager withdrawal                                        |
+
+#### Errors
+
+| Error                                                               | Thrown when                                                                                 |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `LURVesting__ZeroAddress`                                           | `recipient`, `vestedToken`, or admin address is `address(0)`                                |
+| `LURVesting__ZeroAmount`                                            | `amount`, `periodDuration`, or `periodCount` is `0`                                         |
+| `LURVesting__InvalidBatchSize`                                      | Batch array is empty or has more than 100 entries                                           |
+| `LURVesting__NotEnoughBalance(uint256 available, uint256 required)` | `refund()` amount exceeds withdrawable balance; args tell you exactly how much is available |
+| `LURVesting__InitialUnlockExceedsLimit`                             | `initialUnlockPercent > 10000`                                                              |
+| `LURVesting__NoAllocationsFound`                                    | `claim()` / `claimFor()` called for an address with no pools                                |
 
 ---
 
-<a id="support"></a>
+### LURDAO
 
-## 📞 Support
+On-chain governor. Uses LURToken voting power (checkpointed by timestamp). Proposals are queued through TimeLock before execution, enforcing a mandatory delay.
 
-For questions, issues, or support:
+> **Voting power**: a user's balance only counts as voting power after they call `lurToken.delegate(userAddress)` (self-delegate). Always prompt users to delegate before voting.
 
-- GitHub Issues: [dfv-sc-core/issues](https://github.com/lumos-codes-dev/dfv-sc-core/issues)
-- Repository: [dfv-sc-core](https://github.com/lumos-codes-dev/dfv-sc-core)
+#### Constructor parameters
+
+| Parameter            | Solidity type        | Description                                             |
+| -------------------- | -------------------- | ------------------------------------------------------- |
+| `_token`             | `IVotes`             | LURToken address                                        |
+| `_timelock`          | `TimelockController` | TimeLock address                                        |
+| `_votingDelay`       | `uint48`             | Seconds after proposal creation before voting opens     |
+| `_votingPeriod`      | `uint32`             | Seconds the voting window is open                       |
+| `_proposalThreshold` | `uint256`            | Minimum LUR balance (wei) required to create a proposal |
+| `_quorumPercentage`  | `uint256`            | % of total supply required for quorum (e.g. `1` = 1%)   |
+
+#### Key inherited functions (OpenZeppelin Governor)
+
+```ts
+interface LURDAO {
+  // ── Proposal lifecycle ────────────────────────────────────────────────────
+  propose(
+    targets: string[], // contract addresses to call
+    values: bigint[], // ETH to send with each call (wei)
+    calldatas: string[], // encoded function calls (use iface.encodeFunctionData)
+    description: string // human-readable description; hash is used as ID salt
+  ): Promise<ContractTransactionResponse>; // returns proposalId in receipt
+
+  queue(
+    targets: string[],
+    values: bigint[],
+    calldatas: string[],
+    descriptionHash: string // keccak256 of the description string
+  ): Promise<ContractTransactionResponse>;
+
+  execute(
+    targets: string[],
+    values: bigint[],
+    calldatas: string[],
+    descriptionHash: string
+  ): Promise<ContractTransactionResponse>;
+
+  cancel(
+    targets: string[],
+    values: bigint[],
+    calldatas: string[],
+    descriptionHash: string
+  ): Promise<ContractTransactionResponse>;
+
+  // ── Voting ────────────────────────────────────────────────────────────────
+  castVote(
+    proposalId: bigint,
+    support: 0 | 1 | 2
+  ): Promise<ContractTransactionResponse>;
+  // support: 0 = Against, 1 = For, 2 = Abstain
+
+  // ── View ──────────────────────────────────────────────────────────────────
+  state(proposalId: bigint): Promise<number>;
+  // 0=Pending, 1=Active, 2=Canceled, 3=Defeated, 4=Succeeded,
+  // 5=Queued, 6=Expired, 7=Executed
+  proposalSnapshot(proposalId: bigint): Promise<bigint>; // voting-start timestamp
+  proposalDeadline(proposalId: bigint): Promise<bigint>; // voting-end timestamp
+  proposalEta(proposalId: bigint): Promise<bigint>; // earliest execution timestamp
+  getVotes(account: string, timepoint: bigint): Promise<bigint>; // voting power at timepoint
+  quorum(timepoint: bigint): Promise<bigint>; // required votes at timepoint, wei
+  votingDelay(): Promise<bigint>;
+  votingPeriod(): Promise<bigint>;
+  proposalThreshold(): Promise<bigint>; // wei
+}
+```
 
 ---
 
-_Built with ❤️ by the DFV community_
+### TimeLock
+
+Thin wrapper around OpenZeppelin `TimelockController`. Queued operations cannot execute until `minDelay` seconds have passed.
+
+#### Constructor parameters
+
+| Parameter   | Solidity type | Description                                                               |
+| ----------- | ------------- | ------------------------------------------------------------------------- |
+| `minDelay`  | `uint256`     | Minimum seconds between `queue` and `execute`                             |
+| `proposers` | `address[]`   | Addresses granted `PROPOSER_ROLE` at construction                         |
+| `executors` | `address[]`   | Addresses granted `EXECUTOR_ROLE` at construction                         |
+| `admin`     | `address`     | Initial admin (`address(0)` to skip); should be renounced post-deployment |
+
+> **Roles** on TimeLock are managed by `DEFAULT_ADMIN_ROLE`. After the DAO is live, the deployer's admin role should be renounced so that only governance can change TimeLock parameters.
