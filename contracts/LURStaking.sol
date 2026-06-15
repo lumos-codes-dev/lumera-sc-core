@@ -319,6 +319,17 @@ contract LURStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeabl
     }
 
     /**
+     * @notice Calculates the expected rewards for given staking parameters
+     * @param apr Annual percentage rate in basis points (e.g. 1000 = 10%)
+     * @param amount Amount of tokens to stake
+     * @param duration Lock duration in seconds
+     * @return rewards The calculated reward amount
+     */
+    function calculateRewards(uint32 apr, uint256 amount, uint32 duration) external pure returns (uint256 rewards) {
+        rewards = (_calculateYearlyReward(amount, apr) * duration) / SECONDS_IN_YEAR;
+    }
+
+    /**
      * @notice Internal function to unstake tokens for a user
      * @param user The address of the user to unstake for
      * @param poolId The ID of the pool to unstake from

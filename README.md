@@ -165,7 +165,7 @@ await timeLock.renounceRole(
 | LURDAO             | `0x4B8563F7A61dcAc36D1315C978BCF3FF59d6D398` | [View](https://sepolia.etherscan.io/address/0x4B8563F7A61dcAc36D1315C978BCF3FF59d6D398) |
 | LURVesting         | `0xbE3E183D493CCD94c84A2E1ba06aef2e3E8cFf7D` | [View](https://sepolia.etherscan.io/address/0xbE3E183D493CCD94c84A2E1ba06aef2e3E8cFf7D) |
 | LURStaking (proxy) | `0xB99a627e78C96aa323496eF250E6ca87B13c65a5` | [View](https://sepolia.etherscan.io/address/0xB99a627e78C96aa323496eF250E6ca87B13c65a5) |
-| LURStaking (impl)  | `0x26F2500694397Ea642110557bC8FAA99E2722775` | [View](https://sepolia.etherscan.io/address/0x26F2500694397Ea642110557bC8FAA99E2722775) |
+| LURStaking (impl)  | `0x014e68662662dce4D750A0f722A735C272017909` | [View](https://sepolia.etherscan.io/address/0x014e68662662dce4D750A0f722A735C272017909) |
 
 ---
 
@@ -385,6 +385,11 @@ interface LURStaking {
     pendingRewards: bigint; // wei
     isLocked: boolean;
   }>;
+  calculateRewards(
+    apr: number,    // BPS (e.g. 1000 = 10%)
+    amount: bigint, // wei
+    duration: number // seconds
+  ): Promise<bigint>; // expected reward in wei
   paused(): Promise<boolean>;
   hasRole(role: string, account: string): Promise<boolean>;
 
@@ -442,6 +447,15 @@ await staking.unstake(0n, true);
 const { staked, lockUntil, pendingRewards, isLocked } =
   await staking.getUserStakeDetails(userAddress, 0n);
 const lockDate = new Date(Number(lockUntil) * 1000);
+
+// Estimate rewards before staking (UI preview)
+const pool = await staking.getPool(0n);
+const estimated = await staking.calculateRewards(
+  pool.apr,
+  ethers.parseUnits("100", 18),
+  pool.lockDuration
+);
+console.log("Expected reward:", ethers.formatUnits(estimated, 18), "LUR");
 ```
 
 #### Events
