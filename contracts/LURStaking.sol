@@ -171,7 +171,7 @@ contract LURStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeabl
      * @param poolId ID of the pool to update
      * @param paused_ Whether to pause (true) or resume (false) staking
      */
-    function setStakingPaused(uint256 poolId, bool paused_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setStakingPaused(uint256 poolId, bool paused_) external onlyRole(PAUSER_ROLE) {
         StakingStorage storage s = _stakingStorage();
         require(poolId < s.totalPools, LURStaking__PoolNotExists());
         s.pools[poolId].stakingPaused = paused_;
@@ -183,7 +183,7 @@ contract LURStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeabl
      * @param poolId ID of the pool to update
      * @param paused_ Whether unstaking is paused for this pool
      */
-    function setUnstakingPaused(uint256 poolId, bool paused_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setUnstakingPaused(uint256 poolId, bool paused_) external onlyRole(PAUSER_ROLE) {
         StakingStorage storage s = _stakingStorage();
         require(poolId < s.totalPools, LURStaking__PoolNotExists());
         s.pools[poolId].unstakingPaused = paused_;
