@@ -118,11 +118,9 @@ contract LURStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeabl
      *      and emits a Staked event with details of the stake.
      */
     function stake(uint256 poolId, uint256 amount) external nonReentrant whenNotPaused {
-        StakingStorage storage s = _stakingStorage();
-        require(poolId < s.totalPools, LURStaking__PoolNotExists());
         require(amount != 0, LURStaking__ZeroAmount());
 
-        Pool storage pool = s.pools[poolId];
+        (StakingStorage storage s, Pool storage pool) = _requirePool(poolId);
         require(!pool.stakingPaused, LURStaking__StakingPaused());
 
         address sender = _msgSender();
@@ -153,10 +151,7 @@ contract LURStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeabl
      * @notice Force unstake is not allowed for vote power pools
      */
     function unstake(uint256 poolId, bool force) external nonReentrant whenNotPaused {
-        StakingStorage storage s = _stakingStorage();
-        require(poolId < s.totalPools, LURStaking__PoolNotExists());
-
-        Pool storage pool = s.pools[poolId];
+        (StakingStorage storage s, Pool storage pool) = _requirePool(poolId);
         require(!pool.unstakingPaused, LURStaking__UnstakingPaused());
 
         address sender = _msgSender();
@@ -172,9 +167,8 @@ contract LURStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeabl
      * @param paused_ Whether to pause (true) or resume (false) staking
      */
     function setStakingPaused(uint256 poolId, bool paused_) external onlyRole(PAUSER_ROLE) {
-        StakingStorage storage s = _stakingStorage();
-        require(poolId < s.totalPools, LURStaking__PoolNotExists());
-        s.pools[poolId].stakingPaused = paused_;
+        (, Pool storage pool) = _requirePool(poolId);
+        pool.stakingPaused = paused_;
         emit StakingPausedUpdated(poolId, paused_);
     }
 
@@ -184,9 +178,8 @@ contract LURStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeabl
      * @param paused_ Whether unstaking is paused for this pool
      */
     function setUnstakingPaused(uint256 poolId, bool paused_) external onlyRole(PAUSER_ROLE) {
-        StakingStorage storage s = _stakingStorage();
-        require(poolId < s.totalPools, LURStaking__PoolNotExists());
-        s.pools[poolId].unstakingPaused = paused_;
+        (, Pool storage pool) = _requirePool(poolId);
+        pool.unstakingPaused = paused_;
         emit UnstakingPausedUpdated(poolId, paused_);
     }
 
@@ -327,6 +320,29 @@ contract LURStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeabl
      */
     function calculateRewards(uint32 apr, uint256 amount, uint32 duration) external pure returns (uint256 rewards) {
         rewards = (_calculateYearlyReward(amount, apr) * duration) / SECONDS_IN_YEAR;
+    }
+
+    /**
+     * @notice Calculates the expected rewards for a given pool and staked amount
+     * @param poolId ID of the pool
+     * @param amount Amount of tokens to calculate rewards for
+     * @return rewards The calculated reward amount for the pool's full lock duration
+     */
+    function calculateRewards(uint256 poolId, uint256 amount) external view returns (uint256 rewards) {
+        (, Pool storage pool) = _requirePool(poolId);
+        rewards = _calculateRewards(amount, pool);
+    }
+
+    /**
+     * @notice Internal function to validate the existence of a pool and retrieve its storage
+     * @param poolId ID of the pool to validate
+     * @return s The staking storage struct containing all pools and user stakes
+     * @return pool The specific pool storage struct for the given poolId
+     */
+    function _requirePool(uint256 poolId) internal view returns (StakingStorage storage s, Pool storage pool) {
+        s = _stakingStorage();
+        require(poolId < s.totalPools, LURStaking__PoolNotExists());
+        pool = s.pools[poolId];
     }
 
     /**

@@ -165,7 +165,7 @@ await timeLock.renounceRole(
 | LURDAO             | `0x4B8563F7A61dcAc36D1315C978BCF3FF59d6D398` | [View](https://sepolia.etherscan.io/address/0x4B8563F7A61dcAc36D1315C978BCF3FF59d6D398) |
 | LURVesting         | `0xbE3E183D493CCD94c84A2E1ba06aef2e3E8cFf7D` | [View](https://sepolia.etherscan.io/address/0xbE3E183D493CCD94c84A2E1ba06aef2e3E8cFf7D) |
 | LURStaking (proxy) | `0xB99a627e78C96aa323496eF250E6ca87B13c65a5` | [View](https://sepolia.etherscan.io/address/0xB99a627e78C96aa323496eF250E6ca87B13c65a5) |
-| LURStaking (impl)  | `0x014e68662662dce4D750A0f722A735C272017909` | [View](https://sepolia.etherscan.io/address/0x014e68662662dce4D750A0f722A735C272017909) |
+| LURStaking (impl)  | `0x18913a44C974cbF17A3231E87FF88ea6dE4b21B3` | [View](https://sepolia.etherscan.io/address/0x18913a44C974cbF17A3231E87FF88ea6dE4b21B3) |
 
 ---
 
@@ -386,9 +386,14 @@ interface LURStaking {
     isLocked: boolean;
   }>;
   calculateRewards(
-    apr: number,    // BPS (e.g. 1000 = 10%)
+    apr: number, // BPS (e.g. 1000 = 10%)
     amount: bigint, // wei
     duration: number // seconds
+  ): Promise<bigint>; // expected reward in wei
+  // Shorthand overload — looks up pool APR and lockDuration automatically
+  calculateRewards(
+    poolId: bigint, // pool index
+    amount: bigint // wei
   ): Promise<bigint>; // expected reward in wei
   paused(): Promise<boolean>;
   hasRole(role: string, account: string): Promise<boolean>;
@@ -448,14 +453,18 @@ const { staked, lockUntil, pendingRewards, isLocked } =
   await staking.getUserStakeDetails(userAddress, 0n);
 const lockDate = new Date(Number(lockUntil) * 1000);
 
-// Estimate rewards before staking (UI preview)
-const pool = await staking.getPool(0n);
-const estimated = await staking.calculateRewards(
-  pool.apr,
-  ethers.parseUnits("100", 18),
-  pool.lockDuration
+// Estimate rewards before staking — shorthand (UI preview, requires only poolId + amount)
+const estimated = await staking["calculateRewards(uint256,uint256)"](
+  0n,
+  ethers.parseUnits("100", 18)
 );
 console.log("Expected reward:", ethers.formatUnits(estimated, 18), "LUR");
+
+// Alternative: pass APR + duration explicitly (no on-chain call needed for pool data)
+const pool = await staking.getPool(0n);
+const estimatedManual = await staking[
+  "calculateRewards(uint32,uint256,uint32)"
+](pool.apr, ethers.parseUnits("100", 18), pool.lockDuration);
 ```
 
 #### Events

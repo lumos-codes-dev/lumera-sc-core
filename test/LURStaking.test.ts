@@ -23,6 +23,9 @@ async function deployFixture() {
   await (await lur.transfer(other.address, userFunding)).wait();
   await (await lur.transfer(treasury.address, userFunding)).wait();
 
+  const pauserRole = await staking.PAUSER_ROLE();
+  await (await staking.connect(admin).grantRole(pauserRole, admin.address)).wait();
+
   return { deployer, admin, user, other, treasury, withdrawer, lur, staking };
 }
 
@@ -200,8 +203,6 @@ describe("LURStaking", function () {
     expect(pools[0].pendingRewards).to.equal(expectedRewards);
     expect(pools[0].isTokensLocked).to.equal(true);
 
-    const pauserRole = await staking.PAUSER_ROLE();
-    await (await staking.connect(admin).grantRole(pauserRole, admin.address)).wait();
     await (await staking.connect(admin).pause()).wait();
 
     const pausedPools = await staking.getPools(user.address, 0, 1);
@@ -388,5 +389,138 @@ describe("LURStaking", function () {
     await expect(staking.connect(withdrawer).refund(ethers.ZeroAddress, other.address, ethers.parseEther("1")))
       .to.emit(staking, "Refund")
       .withArgs(ethers.ZeroAddress, other.address, ethers.parseEther("1"));
+  });
+
+  it("refund rejects zero recipient and zero amount", async function () {
+    const { staking, admin, user, withdrawer, lur } = await loadFixture(deployFixture);
+    const token = await lur.getAddress();
+
+    const withdrawerRole = await staking.WITHDRAWER_ROLE();
+    await (await staking.connect(admin).grantRole(withdrawerRole, withdrawer.address)).wait();
+
+    await expect(
+      staking.connect(withdrawer).refund(token, ethers.ZeroAddress, ethers.parseEther("1"))
+    ).to.be.revertedWithCustomError(staking, "LURStaking__ZeroAddress");
+
+    await expect(staking.connect(withdrawer).refund(token, user.address, 0)).to.be.revertedWithCustomError(
+      staking,
+      "LURStaking__ZeroAmount"
+    );
+  });
+
+  it("validates additional createPool edge cases and emits PoolCreated", async function () {
+    const { staking, admin, user, lur } = await loadFixture(deployFixture);
+    const token = await lur.getAddress();
+    const baseParams = {
+      name: "Valid",
+      token,
+      apr: 1_000,
+      lockDuration: 1,
+      minStakeAmount: 0n,
+      maxStakeAmount: ethers.parseEther("1"),
+    };
+
+    await expect(staking.connect(user).createPool(baseParams)).to.be.revertedWithCustomError(
+      staking,
+      "AccessControlUnauthorizedAccount"
+    );
+
+    await expect(
+      staking.connect(admin).createPool({ ...baseParams, name: "" })
+    ).to.be.revertedWithCustomError(staking, "LURStaking__InvalidName");
+
+    await expect(
+      staking.connect(admin).createPool({ ...baseParams, maxStakeAmount: 0n })
+    ).to.be.revertedWithCustomError(staking, "LURStaking__ZeroAmount");
+
+    await expect(staking.connect(admin).createPool({ ...baseParams, name: "x".repeat(64) }))
+      .to.emit(staking, "PoolCreated")
+      .withArgs(0, token);
+  });
+
+  it("enforces role access and pool existence on pause setters", async function () {
+    const { staking, admin, user, lur } = await loadFixture(deployFixture);
+    await createPool(staking, admin, await lur.getAddress());
+
+    await expect(staking.connect(user).setStakingPaused(0, true)).to.be.revertedWithCustomError(
+      staking,
+      "AccessControlUnauthorizedAccount"
+    );
+    await expect(staking.connect(user).setUnstakingPaused(0, true)).to.be.revertedWithCustomError(
+      staking,
+      "AccessControlUnauthorizedAccount"
+    );
+
+    await expect(staking.connect(admin).setStakingPaused(99, true)).to.be.revertedWithCustomError(
+      staking,
+      "LURStaking__PoolNotExists"
+    );
+    await expect(staking.connect(admin).setUnstakingPaused(99, true)).to.be.revertedWithCustomError(
+      staking,
+      "LURStaking__PoolNotExists"
+    );
+  });
+
+  it("calculateRewards returns correct values for both overloads", async function () {
+    const { staking, admin, lur } = await loadFixture(deployFixture);
+    const poolParams = await createPool(staking, admin, await lur.getAddress(), {
+      apr: 1_000,
+      lockDuration: 365 * 24 * 60 * 60,
+      minStakeAmount: ethers.parseEther("10"),
+      maxStakeAmount: ethers.parseEther("200"),
+    });
+
+    const amount = ethers.parseEther("100");
+    const expected = calculateRewards(amount, poolParams.apr, poolParams.lockDuration);
+
+    expect(
+      await staking["calculateRewards(uint32,uint256,uint32)"](poolParams.apr, amount, poolParams.lockDuration)
+    ).to.equal(expected);
+
+    expect(await staking["calculateRewards(uint256,uint256)"](0, amount)).to.equal(expected);
+
+    await expect(staking["calculateRewards(uint256,uint256)"](99, amount)).to.be.revertedWithCustomError(
+      staking,
+      "LURStaking__PoolNotExists"
+    );
+  });
+
+  it("allows topping up an existing stake, accumulates amount, and resets lock", async function () {
+    const { staking, admin, user, lur } = await loadFixture(deployFixture);
+    const poolParams = await createPool(staking, admin, await lur.getAddress(), {
+      apr: 1_000,
+      lockDuration: 365 * 24 * 60 * 60,
+      minStakeAmount: ethers.parseEther("10"),
+      maxStakeAmount: ethers.parseEther("200"),
+    });
+
+    const firstStake = ethers.parseEther("50");
+    const topUp = ethers.parseEther("30");
+
+    await (await lur.connect(user).approve(await staking.getAddress(), firstStake + topUp)).wait();
+    await (await staking.connect(user).stake(0, firstStake)).wait();
+    const afterFirst = await staking.getUserStakeDetails(user.address, 0);
+
+    await increaseTime(100);
+
+    await expect(staking.connect(user).stake(0, topUp)).to.emit(staking, "Staked");
+
+    const afterTopUp = await staking.getUserStakeDetails(user.address, 0);
+    expect(afterTopUp[0]).to.equal(firstStake + topUp);
+    expect(afterTopUp[1]).to.be.greaterThan(afterFirst[1]);
+    expect(afterTopUp[2]).to.equal(calculateRewards(firstStake + topUp, poolParams.apr, poolParams.lockDuration));
+  });
+
+  it("allows admin to upgrade the proxy and rejects unauthorized upgrades", async function () {
+    const { staking, admin, user } = await loadFixture(deployFixture);
+
+    const StakingAsUser = await ethers.getContractFactory("LURStaking", user);
+    await expect(
+      upgrades.upgradeProxy(await staking.getAddress(), StakingAsUser, { kind: "uups" })
+    ).to.be.revertedWithCustomError(staking, "AccessControlUnauthorizedAccount");
+
+    const StakingAsAdmin = await ethers.getContractFactory("LURStaking", admin);
+    await expect(upgrades.upgradeProxy(await staking.getAddress(), StakingAsAdmin, { kind: "uups" })).to.not.be
+      .reverted;
   });
 });
