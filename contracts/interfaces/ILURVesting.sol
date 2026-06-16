@@ -1,3 +1,4 @@
+// solhint-disable gas-indexed-events
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
@@ -89,6 +90,15 @@ interface ILURVesting {
         uint256 claimableForUser;
     }
 
+    /**
+     * @notice Emitted when a new vesting pool is created
+     * @param poolId The ID of the newly created vesting pool
+     * @param name The name of the vesting pool
+     * @param cliffDuration The duration of the cliff period in seconds
+     * @param periodDuration The duration of each vesting period in seconds
+     * @param periodCount The number of vesting periods
+     * @param initialUnlockPercent The percentage of tokens that can be claimed immediately after the cliff
+     */
     event PoolCreated(
         uint256 indexed poolId,
         string name,
@@ -98,10 +108,29 @@ interface ILURVesting {
         uint256 initialUnlockPercent
     );
 
+    /**
+     * @notice Emitted when tokens are allocated to a beneficiary
+     * @param poolId The ID of the vesting pool
+     * @param recipient The address of the beneficiary
+     * @param amount The amount of tokens allocated
+     * @param start The start time of the vesting schedule
+     */
     event Allocated(uint256 indexed poolId, address indexed recipient, uint256 amount, uint256 start);
 
+    /**
+     * @notice Emitted when a beneficiary claims tokens
+     * @param recipient The address of the beneficiary
+     * @param poolId The ID of the vesting pool
+     * @param amount The amount of tokens claimed
+     */
     event Claim(address indexed recipient, uint256 indexed poolId, uint256 amount);
 
+    /**
+     * @notice Emitted when tokens are refunded
+     * @param token The address of the token
+     * @param recipient The address of the recipient
+     * @param amount The amount of tokens refunded
+     */
     event Refund(address indexed token, address indexed recipient, uint256 amount);
 
     error LURVesting__ZeroAddress();
