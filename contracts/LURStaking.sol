@@ -80,33 +80,31 @@ contract LURStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeabl
     }
 
     /// @notice Creates a new pool (rewards or vote power)
-    /// @param params_ Parameters for creating the pool including name, token address,
+    /// @param p Parameters for creating the pool including name, token address,
     ///                APR, lock duration, min and max stake amounts
     /// @return poolId ID of the created pool
-    function createPool(
-        CreatePoolParams calldata params_
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 poolId) {
-        require(bytes(params_.name).length != 0 && bytes(params_.name).length <= 64, LURStaking__InvalidName());
-        require(params_.token != address(0), LURStaking__ZeroAddress());
-        require(params_.apr != 0 && params_.lockDuration != 0 && params_.maxStakeAmount != 0, LURStaking__ZeroAmount());
-        require(params_.minStakeAmount <= params_.maxStakeAmount, LURStaking__InvalidAmounts());
+    function createPool(CreatePoolParams calldata p) external onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 poolId) {
+        require(bytes(p.name).length != 0 && bytes(p.name).length <= 64, LURStaking__InvalidName());
+        require(p.token != address(0), LURStaking__ZeroAddress());
+        require(p.apr != 0 && p.lockDuration != 0 && p.maxStakeAmount != 0, LURStaking__ZeroAmount());
+        require(p.minStakeAmount <= p.maxStakeAmount, LURStaking__InvalidAmounts());
 
         StakingStorage storage s = _stakingStorage();
         poolId = s.totalPools++;
 
         s.pools[poolId] = Pool({
-            name: params_.name,
-            token: IERC20(params_.token),
-            apr: params_.apr,
-            lockDuration: params_.lockDuration,
-            minStakeAmount: params_.minStakeAmount,
-            maxStakeAmount: params_.maxStakeAmount,
+            name: p.name,
+            token: IERC20(p.token),
+            apr: p.apr,
+            lockDuration: p.lockDuration,
+            minStakeAmount: p.minStakeAmount,
+            maxStakeAmount: p.maxStakeAmount,
             stakingPaused: false,
             unstakingPaused: false,
             totalStaked: 0
         });
 
-        emit PoolCreated(poolId, params_.token);
+        emit PoolCreated(poolId, p.token);
     }
 
     /**

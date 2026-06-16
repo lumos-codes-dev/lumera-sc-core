@@ -8,100 +8,110 @@ pragma solidity 0.8.28;
  */
 interface ILURVesting {
     /**
-     * @notice Structure to define a vesting schedule
+     * @notice Structure to define a vesting pool rules
+     * @param name The name of the vesting pool
      * @param cliffDuration The duration of the cliff period in seconds.
      * @param periodDuration The duration of each vesting period in seconds.
      * @param periodCount The number of vesting periods.
+     * @param initialUnlockPercent The percentage of tokens that can be claimed immediately after the cliff
      */
-    struct Schedule {
+    struct Pool {
+        string name;
         uint256 cliffDuration;
         uint256 periodDuration;
         uint256 periodCount;
+        uint256 initialUnlockPercent;
+        bool claimPaused;
     }
 
     /**
-     * @notice Structure to define a vesting pool for a recipient
-     * @param amount The total amount of tokens to be vested in the pool.
-     * @param start The timestamp when the vesting timeline starts.
-     * @param schedule The vesting schedule associated with the pool.
-     * @param initialUnlockPercent The percentage of tokens that can be claimed immediately after the cliff
-     * @param claimed The amount of tokens that have already been claimed from the pool.
+     * @notice Structure defining a user's allocation within a pool
+     * @param total Total tokens allocated
+     * @param claimed Tokens already claimed
+     * @param start Vesting start timestamp
      */
-    struct Pool {
-        uint256 amount;
-        uint256 start;
-        Schedule schedule;
-        uint256 initialUnlockPercent;
+    struct UserAllocation {
+        uint256 total;
         uint256 claimed;
+        uint256 start;
     }
 
     /**
      * @notice Structure to define the parameters for creating a vesting pool
-     * @param recipient The address of the recipient who will receive the vested tokens.
-     * @param amount The total amount of tokens to be vested.
-     * @param start The timestamp when the vesting timeline starts.
-     * @param schedule The vesting schedule.
+     * @param name The name of the vesting pool
+     * @param cliffDuration The duration of the cliff period in seconds.
+     * @param periodDuration The duration of each vesting period in seconds.
+     * @param periodCount The number of vesting periods.
      * @param initialUnlockPercent The percentage of tokens that can be claimed immediately after the cliff
      */
-    struct CreateVestingPoolParams {
-        address recipient;
-        uint256 amount;
-        uint256 start;
-        Schedule schedule;
+    struct CreatePoolParams {
+        string name;
+        uint256 cliffDuration;
+        uint256 periodDuration;
+        uint256 periodCount;
         uint256 initialUnlockPercent;
     }
 
     /**
-     * @notice Event emitted when a new vesting pool is created
-     * @param recipient The address of the recipient who will receive the vested tokens.
-     * @param pool The details of the created vesting pool.
+     * @notice Parameters for a single allocation entry in a batch
      */
-    event VestingPoolCreated(address indexed recipient, Pool pool);
+    struct AllocateParams {
+        address recipient;
+        uint256 amount;
+        uint256 start;
+    }
 
     /**
-     * @notice Event emitted when vested tokens are claimed by a recipient
-     * @param recipient The address of the recipient who claimed the tokens.
-     * @param amount The amount of tokens that were claimed.
+     * @notice Extended pool info with per-user allocation details, used in getPools()
+     * @param id The ID of the vesting pool
+     * @param name The name of the vesting pool
+     * @param cliffDuration The duration of the cliff period in seconds.
+     * @param periodDuration The duration of each vesting period in seconds.
+     * @param periodCount The number of vesting periods.
+     * @param initialUnlockPercent The percentage of tokens that can be claimed immediately after the cliff
+     * @param claimPaused Whether claiming is paused for this pool
+     * @param allocatedForUser The total tokens allocated for the user
+     * @param claimedByUser The tokens already claimed by the user
+     * @param startForUser The vesting start timestamp for the user
+     * @param claimableForUser The tokens currently claimable by the user
      */
-    event Claim(address indexed recipient, uint256 indexed amount);
+    struct UserPoolExtended {
+        uint256 id;
+        string name;
+        uint256 cliffDuration;
+        uint256 periodDuration;
+        uint256 periodCount;
+        uint256 initialUnlockPercent;
+        bool claimPaused;
+        uint256 allocatedForUser;
+        uint256 claimedByUser;
+        uint256 startForUser;
+        uint256 claimableForUser;
+    }
 
-    /**
-     * @notice Event emitted when unused tokens are withdrawn from the contract
-     * @param token The address of the token that was withdrawn
-     * @param recipient The address of the recipient who received the withdrawn tokens
-     * @param amount The amount of tokens that were withdrawn
-     */
-    event Refund(address indexed token, address indexed recipient, uint256 indexed amount);
+    event PoolCreated(
+        uint256 indexed poolId,
+        string name,
+        uint256 cliffDuration,
+        uint256 periodDuration,
+        uint256 periodCount,
+        uint256 initialUnlockPercent
+    );
 
-    /**
-     * @notice Error thrown when a zero address is provided
-     */
+    event Allocated(uint256 indexed poolId, address indexed recipient, uint256 amount, uint256 start);
+
+    event Claim(address indexed recipient, uint256 indexed poolId, uint256 amount);
+
+    event Refund(address indexed token, address indexed recipient, uint256 amount);
+
     error LURVesting__ZeroAddress();
-
-    /**
-     * @notice Error thrown when invalid batch size is provided
-     */
-    error LURVesting__InvalidBatchSize();
-
-    /**
-     * @notice Error thrown when a zero amount is provided
-     */
     error LURVesting__ZeroAmount();
-
-    /**
-     * @notice Error thrown when the balance is not enough for the requested operation
-     * @param available The available balance in the contract
-     * @param required The required balance
-     */
-    error LURVesting__NotEnoughBalance(uint256 available, uint256 required);
-
-    /**
-     * @notice Error thrown when the initial unlock percentage exceeds the limit of 100% (10000 basis points)
-     */
+    error LURVesting__InvalidName();
     error LURVesting__InitialUnlockExceedsLimit();
-
-    /**
-     * @notice Error thrown when no vesting allocations are found for a recipient
-     */
+    error LURVesting__NotEnoughBalance(uint256 available, uint256 required);
     error LURVesting__NoAllocationsFound();
+    error LURVesting__AlreadyAllocated();
+    error LURVesting__PoolNotExists();
+    error LURVesting__ClaimPaused();
+    error LURVesting__InvalidBatchSize();
 }

@@ -34,7 +34,7 @@ All contracts are written in Solidity 0.8.28 and built on top of OpenZeppelin v5
 - **Governance token**: ERC20 with on-chain voting power (`ERC20Votes`) and gasless approvals (`ERC20Permit`)
 - **Multi-pool staking**: Configurable lock durations and APR per pool, with per-user reward tracking
 - **Force unstake**: Users can exit before lock expiry at the cost of forfeiting rewards
-- **Vesting schedules**: Cliff + periodic unlock with optional immediate unlock percentage, batch creation supported
+- **Vesting schedules**: Manager creates pool rules, then allocates tokens per-user (single or batch). Cliff + periodic unlock with optional immediate unlock percentage, per-pool claim pause
 - **On-chain DAO**: Governor with quorum, proposal threshold, voting delay/period, and timelock execution
 - **Emergency controls**: Global pause and per-pool staking/unstaking pause
 
@@ -52,8 +52,11 @@ lumera-sc-core
 │   ├── ReentrancyGuardUpgradeable
 │   └── PausableExtUpgradeable (AccessControl + Pausable + PAUSER_ROLE)
 │
-├── LURVesting.sol             Token vesting with cliff/period schedules
-│   └── AccessControl
+├── LURVesting.sol             UUPS upgradeable token vesting
+│   ├── Initializable
+│   ├── UUPSUpgradeable
+│   ├── ReentrancyGuardUpgradeable
+│   └── PausableExtUpgradeable (AccessControl + Pausable + PAUSER_ROLE)
 │
 ├── dao/
 │   ├── LURDAO.sol             On-chain governor
@@ -246,7 +249,7 @@ Reports are generated in `coverage/`:
 >
 > **LURStaking proxy** — always interact via the **proxy address**, never the implementation address directly.
 >
-> **Approvals** — `stake()` and `createVestingPool()` pull tokens from the caller. You must call `lurToken.approve(contractAddress, amount)` first.
+> **Approvals** — `stake()`, `allocate()`, and `allocateBatch()` pull tokens from the caller. You must call `lurToken.approve(contractAddress, amount)` first.
 
 ---
 
@@ -500,7 +503,7 @@ const estimatedManual = await staking[
 
 ### LURVesting
 
-Token vesting contract. Each recipient can have multiple independent pools. Tokens unlock according to a cliff + periodic schedule, with an optional immediate unlock on cliff end.
+UUPS-upgradeable token vesting contract. A manager creates reusable **pool rules** (cliff, period schedule, initial unlock %) via `createPool`, then allocates tokens per-user via `allocate` or `allocateBatch`. Each user claims independently from each pool they have an allocation in.
 
 **Unlock formula:**
 
@@ -509,8 +512,8 @@ cliffEnd = start + cliffDuration
 
 // Before cliff end: 0 tokens claimable
 // After cliff end:
-  passedPeriods = floor((now - start - cliffDuration) / periodDuration)
-  initialAmount = totalAmount × (initialUnlockPercent / 10000)
+  passedPeriods  = floor((now - start - cliffDuration) / periodDuration)
+  initialAmount  = totalAmount × (initialUnlockPercent / 10000)
 
   if passedPeriods >= periodCount:
     unlocked = totalAmount
@@ -520,56 +523,93 @@ cliffEnd = start + cliffDuration
 claimable = unlocked - alreadyClaimed
 ```
 
+#### Roles
+
+| Role constant        | `keccak256` value          | Who can call                              |
+| -------------------- | -------------------------- | ----------------------------------------- |
+| `DEFAULT_ADMIN_ROLE` | `0x00…00` (bytes32 zero)   | Manage roles, upgrade proxy               |
+| `MANAGER_ROLE`       | `keccak256("MANAGER_ROLE")`| `createPool`, `allocate`, `allocateBatch`, `refund` |
+| `PAUSER_ROLE`        | `keccak256("PAUSER_ROLE")` | `setClaimPaused`, `pause`, `unpause`      |
+
 #### TypeScript interface
 
 ```ts
 // ── Structs ────────────────────────────────────────────────────────────────────
 
-interface Schedule {
-  cliffDuration: bigint; // seconds before any tokens unlock
-  periodDuration: bigint; // seconds per unlock period
-  periodCount: bigint; // total number of unlock periods
-}
-
-interface VestingPool {
-  amount: bigint; // total tokens in this pool, wei
-  start: bigint; // Unix timestamp vesting started
-  schedule: Schedule;
+interface Pool {
+  name: string;
+  cliffDuration: bigint;      // seconds before any tokens unlock
+  periodDuration: bigint;     // seconds per unlock period
+  periodCount: bigint;        // total number of unlock periods
   initialUnlockPercent: bigint; // BPS (e.g. 1000 = 10% unlocked right after cliff)
-  claimed: bigint; // tokens already claimed, wei
+  claimPaused: boolean;
 }
 
-interface CreateVestingPoolParams {
-  recipient: string;
-  amount: bigint; // wei; caller must have approved this amount
-  start: bigint; // Unix timestamp; if < block.timestamp, clamped to now
-  schedule: Schedule;
+interface UserAllocation {
+  total: bigint;    // total tokens allocated, wei
+  claimed: bigint;  // tokens already claimed, wei
+  start: bigint;    // Unix timestamp when vesting starts
+}
+
+interface UserPoolExtended extends Pool {
+  id: bigint;
+  allocatedForUser: bigint;   // total tokens allocated to the user in this pool
+  claimedByUser: bigint;      // tokens already claimed
+  startForUser: bigint;       // vesting start timestamp for the user (0 if not allocated)
+  claimableForUser: bigint;   // tokens claimable right now
+}
+
+interface CreatePoolParams {
+  name: string;
+  cliffDuration: bigint;
+  periodDuration: bigint;
+  periodCount: bigint;
   initialUnlockPercent: bigint; // BPS 0–10000
+}
+
+interface AllocateParams {
+  recipient: string;
+  amount: bigint;   // wei; caller must approve this amount
+  start: bigint;    // Unix timestamp; pass 0 to use block.timestamp
 }
 
 // ── Contract ───────────────────────────────────────────────────────────────────
 
 interface LURVesting {
   // ── View ──────────────────────────────────────────────────────────────────
-  token(): Promise<string>; // LURToken address
-  totalVested(): Promise<bigint>; // total reserved across all pools, wei
-  getClaimableAmount(recipient: string): Promise<bigint>; // claimable right now, wei
-  pools(recipient: string, index: bigint): Promise<VestingPool>; // single pool by index
-
+  getTotalPools(): Promise<bigint>;
+  getPool(poolId: bigint): Promise<Pool>;
+  getPools(
+    user: string,   // pass ethers.ZeroAddress if no user context needed
+    offset: bigint,
+    limit: bigint
+  ): Promise<UserPoolExtended[]>;
+  getUserAllocation(user: string, poolId: bigint): Promise<UserAllocation>;
+  getClaimableAmount(user: string, poolId: bigint): Promise<bigint>;
+  paused(): Promise<boolean>;
   hasRole(role: string, account: string): Promise<boolean>;
 
   // ── User actions ──────────────────────────────────────────────────────────
-  claim(): Promise<ContractTransactionResponse>;
-  claimFor(recipient: string): Promise<ContractTransactionResponse>;
+  claim(poolId: bigint): Promise<ContractTransactionResponse>;
 
   // ── Manager ───────────────────────────────────────────────────────────────
-  // Requires prior: lurToken.approve(vestingAddress, params.amount)
-  createVestingPool(
-    params: CreateVestingPoolParams
+  createPool(params: CreatePoolParams): Promise<ContractTransactionResponse>;
+
+  // Single allocation — requires: lurToken.approve(vestingAddress, amount)
+  allocate(
+    poolId: bigint,
+    recipient: string,
+    amount: bigint,
+    start: bigint   // 0 = block.timestamp
   ): Promise<ContractTransactionResponse>;
-  createVestingPoolBatch(
-    params: CreateVestingPoolParams[]
+
+  // Batch allocation — requires: lurToken.approve(vestingAddress, totalAmount)
+  allocateBatch(
+    poolId: bigint,
+    entries: AllocateParams[]  // max 100 entries
   ): Promise<ContractTransactionResponse>;
+
+  setClaimPaused(poolId: bigint, paused: boolean): Promise<ContractTransactionResponse>;
   refund(
     tokenAddress: string,
     recipient: string,
@@ -586,52 +626,69 @@ import { ethers } from "ethers";
 const vesting = new ethers.Contract(VESTING_ADDRESS, VESTING_ABI, signer);
 const token = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, signer);
 
-// How much can the user claim right now?
-const claimable = await vesting.getClaimableAmount(userAddress);
-console.log(ethers.formatUnits(claimable, 18), "LUR claimable");
-
-// Claim
-await vesting.claim();
-
-// Read a specific pool (index 0)
-const pool = await vesting.pools(userAddress, 0n);
-const percentClaimed = Number((pool.claimed * 100n) / pool.amount); // rough %
-
-// Create a vesting pool (manager role required)
-// 1000 LUR, unlocks 1 token/second over 1000 seconds, no cliff
-const amount = ethers.parseUnits("1000", 18);
-await token.approve(VESTING_ADDRESS, amount);
-await vesting.createVestingPool({
-  recipient: "0x...",
-  amount,
-  start: BigInt(Math.floor(Date.now() / 1000)),
-  schedule: {
-    cliffDuration: 0n,
-    periodDuration: 1n,
-    periodCount: 1000n,
-  },
+// ── Manager: create a pool ────────────────────────────────────────────────────
+await vesting.createPool({
+  name: "Team",
+  cliffDuration: BigInt(6 * 30 * 24 * 3600), // 6-month cliff
+  periodDuration: BigInt(30 * 24 * 3600),     // monthly periods
+  periodCount: 24n,                            // 2-year linear unlock
   initialUnlockPercent: 0n,
 });
+// pool 0 is now created
+
+// ── Manager: allocate to a single user ───────────────────────────────────────
+const amount = ethers.parseUnits("1000", 18);
+await token.approve(VESTING_ADDRESS, amount);
+await vesting.allocate(0n, "0xRecipient...", amount, 0n); // start = now
+
+// ── Manager: allocate to multiple users in one tx ─────────────────────────────
+const entries = [
+  { recipient: "0xAlice...", amount: ethers.parseUnits("500", 18), start: 0n },
+  { recipient: "0xBob...",   amount: ethers.parseUnits("300", 18), start: 0n },
+  { recipient: "0xCarol...", amount: ethers.parseUnits("200", 18), start: 0n },
+];
+const totalAmount = entries.reduce((s, e) => s + e.amount, 0n);
+await token.approve(VESTING_ADDRESS, totalAmount);
+await vesting.allocateBatch(0n, entries);
+
+// ── User: check and claim ─────────────────────────────────────────────────────
+const claimable = await vesting.getClaimableAmount(userAddress, 0n);
+console.log(ethers.formatUnits(claimable, 18), "LUR claimable from pool 0");
+
+await vesting.claim(0n);
+
+// ── Read allocation details ───────────────────────────────────────────────────
+const alloc = await vesting.getUserAllocation(userAddress, 0n);
+// alloc.total, alloc.claimed, alloc.start
+
+// ── List all pools with user context (paginated) ──────────────────────────────
+const pools = await vesting.getPools(userAddress, 0n, 10n);
+// pools[0].claimableForUser, pools[0].allocatedForUser, etc.
 ```
 
 #### Events
 
-| Signature                                                  | Indexed                        | Description                                               |
-| ---------------------------------------------------------- | ------------------------------ | --------------------------------------------------------- |
-| `VestingPoolCreated(address recipient, Pool pool)`         | `recipient`                    | New vesting pool created; `pool` contains the full struct |
-| `Claim(address recipient, uint256 amount)`                 | `recipient`, `amount`          | Tokens claimed                                            |
-| `Refund(address token, address recipient, uint256 amount)` | `token`, `recipient`, `amount` | Manager withdrawal                                        |
+| Signature                                                                    | Indexed              | Description                         |
+| ---------------------------------------------------------------------------- | -------------------- | ------------------------------------ |
+| `PoolCreated(uint256 poolId, string name, uint256 cliffDuration, uint256 periodDuration, uint256 periodCount, uint256 initialUnlockPercent)` | `poolId` | New pool rules created |
+| `Allocated(uint256 poolId, address recipient, uint256 amount, uint256 start)` | `poolId`, `recipient` | Tokens allocated to a recipient     |
+| `Claim(address recipient, uint256 poolId, uint256 amount)`                   | `recipient`, `poolId`| Tokens claimed                       |
+| `Refund(address token, address recipient, uint256 amount)`                   | `token`, `recipient` | Manager withdrawal                   |
 
 #### Errors
 
 | Error                                                               | Thrown when                                                                                 |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `LURVesting__ZeroAddress`                                           | `recipient`, `vestedToken`, or admin address is `address(0)`                                |
+| `LURVesting__ZeroAddress`                                           | A required address argument is `address(0)`                                                 |
 | `LURVesting__ZeroAmount`                                            | `amount`, `periodDuration`, or `periodCount` is `0`                                         |
-| `LURVesting__InvalidBatchSize`                                      | Batch array is empty or has more than 100 entries                                           |
-| `LURVesting__NotEnoughBalance(uint256 available, uint256 required)` | `refund()` amount exceeds withdrawable balance; args tell you exactly how much is available |
+| `LURVesting__InvalidName`                                           | Pool name is empty or longer than 64 characters                                             |
 | `LURVesting__InitialUnlockExceedsLimit`                             | `initialUnlockPercent > 10000`                                                              |
-| `LURVesting__NoAllocationsFound`                                    | `claim()` / `claimFor()` called for an address with no pools                                |
+| `LURVesting__PoolNotExists`                                         | `poolId >= totalPools`                                                                      |
+| `LURVesting__AlreadyAllocated`                                      | Recipient already has an allocation in this pool                                            |
+| `LURVesting__InvalidBatchSize`                                      | Batch array is empty or has more than 100 entries                                           |
+| `LURVesting__NoAllocationsFound`                                    | `claim()` called for a pool where the caller has no allocation                              |
+| `LURVesting__ClaimPaused`                                           | Claiming is paused for this pool                                                            |
+| `LURVesting__NotEnoughBalance(uint256 available, uint256 required)` | `refund()` amount exceeds withdrawable balance                                              |
 
 ---
 
