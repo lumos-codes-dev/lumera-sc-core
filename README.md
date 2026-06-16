@@ -166,7 +166,8 @@ await timeLock.renounceRole(
 | LURToken           | `0xD1E4E8067fFAacc787342342884c53a10D2877E9` | [View](https://sepolia.etherscan.io/address/0xD1E4E8067fFAacc787342342884c53a10D2877E9) |
 | TimeLock           | `0x88EFaa1798905F37eE5A8FFE7Fe2139284b6A9e8` | [View](https://sepolia.etherscan.io/address/0x88EFaa1798905F37eE5A8FFE7Fe2139284b6A9e8) |
 | LURDAO             | `0x4B8563F7A61dcAc36D1315C978BCF3FF59d6D398` | [View](https://sepolia.etherscan.io/address/0x4B8563F7A61dcAc36D1315C978BCF3FF59d6D398) |
-| LURVesting         | `0xbE3E183D493CCD94c84A2E1ba06aef2e3E8cFf7D` | [View](https://sepolia.etherscan.io/address/0xbE3E183D493CCD94c84A2E1ba06aef2e3E8cFf7D) |
+| LURVesting (proxy) | `0x5258354A32324BDee0b6f1232Ee03Ba7Bb1f64f4` | [View](https://sepolia.etherscan.io/address/0x5258354A32324BDee0b6f1232Ee03Ba7Bb1f64f4) |
+| LURVesting (impl)  | `0x4A0a45C8E45a66fe21FD69422644210523C93977` | [View](https://sepolia.etherscan.io/address/0x4A0a45C8E45a66fe21FD69422644210523C93977) |
 | LURStaking (proxy) | `0xB99a627e78C96aa323496eF250E6ca87B13c65a5` | [View](https://sepolia.etherscan.io/address/0xB99a627e78C96aa323496eF250E6ca87B13c65a5) |
 | LURStaking (impl)  | `0x18913a44C974cbF17A3231E87FF88ea6dE4b21B3` | [View](https://sepolia.etherscan.io/address/0x18913a44C974cbF17A3231E87FF88ea6dE4b21B3) |
 
