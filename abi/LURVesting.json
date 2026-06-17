@@ -1,22 +1,6 @@
 [
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "vestedToken",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "dao",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "vestingManager",
-        "type": "address"
-      }
-    ],
+    "inputs": [],
     "stateMutability": "nonpayable",
     "type": "constructor"
   },
@@ -42,6 +26,63 @@
     "type": "error"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      }
+    ],
+    "name": "AddressEmptyCode",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "implementation",
+        "type": "address"
+      }
+    ],
+    "name": "ERC1967InvalidImplementation",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ERC1967NonPayable",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "EnforcedPause",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ExpectedPause",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "FailedCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidInitialization",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "LURVesting__AlreadyAllocated",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "LURVesting__ClaimPaused",
+    "type": "error"
+  },
+  {
     "inputs": [],
     "name": "LURVesting__InitialUnlockExceedsLimit",
     "type": "error"
@@ -49,6 +90,11 @@
   {
     "inputs": [],
     "name": "LURVesting__InvalidBatchSize",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "LURVesting__InvalidName",
     "type": "error"
   },
   {
@@ -74,12 +120,27 @@
   },
   {
     "inputs": [],
+    "name": "LURVesting__PoolNotExists",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "LURVesting__ZeroAddress",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "LURVesting__ZeroAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotInitializing",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
     "type": "error"
   },
   {
@@ -94,6 +155,53 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "UUPSUnauthorizedCallContext",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "slot",
+        "type": "bytes32"
+      }
+    ],
+    "name": "UUPSUnsupportedProxiableUUID",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "start",
+        "type": "uint256"
+      }
+    ],
+    "name": "Allocated",
+    "type": "event"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -105,11 +213,86 @@
       {
         "indexed": true,
         "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
       }
     ],
     "name": "Claim",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "version",
+        "type": "uint64"
+      }
+    ],
+    "name": "Initialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "Paused",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "cliffDuration",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "periodDuration",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "periodCount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "initialUnlockPercent",
+        "type": "uint256"
+      }
+    ],
+    "name": "PoolCreated",
     "type": "event"
   },
   {
@@ -128,7 +311,7 @@
         "type": "address"
       },
       {
-        "indexed": true,
+        "indexed": false,
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
@@ -216,63 +399,26 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "recipient",
-        "type": "address"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "start",
-            "type": "uint256"
-          },
-          {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "cliffDuration",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "periodDuration",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "periodCount",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct ILURVesting.Schedule",
-            "name": "schedule",
-            "type": "tuple"
-          },
-          {
-            "internalType": "uint256",
-            "name": "initialUnlockPercent",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "claimed",
-            "type": "uint256"
-          }
-        ],
         "indexed": false,
-        "internalType": "struct ILURVesting.Pool",
-        "name": "pool",
-        "type": "tuple"
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
       }
     ],
-    "name": "VestingPoolCreated",
+    "name": "Unpaused",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "implementation",
+        "type": "address"
+      }
+    ],
+    "name": "Upgraded",
     "type": "event"
   },
   {
@@ -303,6 +449,19 @@
   },
   {
     "inputs": [],
+    "name": "MANAGER_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "MAX_BATCH_SIZE",
     "outputs": [
       {
@@ -316,7 +475,7 @@
   },
   {
     "inputs": [],
-    "name": "VESTING_MANAGER_ROLE",
+    "name": "PAUSER_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -329,6 +488,101 @@
   },
   {
     "inputs": [],
+    "name": "UPGRADE_INTERFACE_VERSION",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "WITHDRAWER_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "start",
+        "type": "uint256"
+      }
+    ],
+    "name": "allocate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "start",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ILURVesting.AllocateParams[]",
+        "name": "entries",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "allocateBatch",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      }
+    ],
     "name": "claim",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -337,56 +591,26 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "recipient",
-        "type": "address"
-      }
-    ],
-    "name": "claimFor",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "components": [
           {
-            "internalType": "address",
-            "name": "recipient",
-            "type": "address"
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
           },
           {
             "internalType": "uint256",
-            "name": "amount",
+            "name": "cliffDuration",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "start",
+            "name": "periodDuration",
             "type": "uint256"
           },
           {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "cliffDuration",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "periodDuration",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "periodCount",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct ILURVesting.Schedule",
-            "name": "schedule",
-            "type": "tuple"
+            "internalType": "uint256",
+            "name": "periodCount",
+            "type": "uint256"
           },
           {
             "internalType": "uint256",
@@ -394,70 +618,19 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct ILURVesting.CreateVestingPoolParams",
+        "internalType": "struct ILURVesting.CreatePoolParams",
         "name": "p",
         "type": "tuple"
       }
     ],
-    "name": "createVestingPool",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+    "name": "createPool",
+    "outputs": [
       {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "recipient",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "start",
-            "type": "uint256"
-          },
-          {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "cliffDuration",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "periodDuration",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "periodCount",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct ILURVesting.Schedule",
-            "name": "schedule",
-            "type": "tuple"
-          },
-          {
-            "internalType": "uint256",
-            "name": "initialUnlockPercent",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct ILURVesting.CreateVestingPoolParams[]",
-        "name": "p",
-        "type": "tuple[]"
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
       }
     ],
-    "name": "createVestingPoolBatch",
-    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -465,16 +638,158 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "recipient",
+        "name": "user",
         "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
       }
     ],
     "name": "getClaimableAmount",
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "amount",
+        "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPool",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "cliffDuration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "periodDuration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "periodCount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "initialUnlockPercent",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "claimPaused",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct ILURVesting.Pool",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "offset",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "limit",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPools",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "cliffDuration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "periodDuration",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "periodCount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "initialUnlockPercent",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "claimPaused",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "allocatedForUser",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "claimedByUser",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "startForUser",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "claimableForUser",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ILURVesting.UserPoolExtended[]",
+        "name": "",
+        "type": "tuple[]"
       }
     ],
     "stateMutability": "view",
@@ -494,6 +809,60 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTotalPools",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getUserAllocation",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "total",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "claimed",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "start",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ILURVesting.UserAllocation",
+        "name": "",
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -545,58 +914,53 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "recipient",
+        "name": "token",
         "type": "address"
       },
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        "internalType": "address",
+        "name": "dao",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "vestingManager",
+        "type": "address"
       }
     ],
-    "name": "pools",
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "paused",
     "outputs": [
       {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "proxiableUUID",
+    "outputs": [
       {
-        "internalType": "uint256",
-        "name": "start",
-        "type": "uint256"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "cliffDuration",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "periodDuration",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "periodCount",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct ILURVesting.Schedule",
-        "name": "schedule",
-        "type": "tuple"
-      },
-      {
-        "internalType": "uint256",
-        "name": "initialUnlockPercent",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "claimed",
-        "type": "uint256"
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",
@@ -606,7 +970,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "tokenAddress",
+        "name": "token",
         "type": "address"
       },
       {
@@ -664,6 +1028,24 @@
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "paused_",
+        "type": "bool"
+      }
+    ],
+    "name": "setClaimPaused",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes4",
         "name": "interfaceId",
         "type": "bytes4"
@@ -682,28 +1064,27 @@
   },
   {
     "inputs": [],
-    "name": "token",
-    "outputs": [
-      {
-        "internalType": "contract IERC20",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
+    "name": "unpause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "totalVested",
-    "outputs": [
+    "inputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        "internalType": "address",
+        "name": "newImplementation",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
       }
     ],
-    "stateMutability": "view",
+    "name": "upgradeToAndCall",
+    "outputs": [],
+    "stateMutability": "payable",
     "type": "function"
   }
 ]
