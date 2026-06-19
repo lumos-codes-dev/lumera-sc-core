@@ -1,15 +1,12 @@
 import { ethers, upgrades } from "hardhat";
 import hre from "hardhat";
 
-// ── Already-deployed dependencies (Sepolia)
 const LUR_TOKEN_ADDRESS = "0xD1E4E8067fFAacc787342342884c53a10D2877E9";
 const DAO_ADDRESS = "0x4B8563F7A61dcAc36D1315C978BCF3FF59d6D398";
 
-// ── Allocation recipients
 const EXTRA_RECIPIENT = "0x224637236f8C7c8ec3E8bbAe7b77F75d48074043";
-const ALLOCATION_AMOUNT = ethers.parseEther("100000"); // 100 000 LUR per recipient per pool
+const ALLOCATION_AMOUNT = ethers.parseEther("1000000");
 
-// ── Pool definitions
 const SECOND = 1;
 const MINUTE = 60;
 const HOUR = 60 * MINUTE;
@@ -21,23 +18,23 @@ const YEAR = 365 * DAY;
 const VESTING_POOLS = [
   {
     name: "Team Allocation",
-    cliffDuration: YEAR, // 1-year cliff
-    periodDuration: MONTH, // monthly periods
-    periodCount: 48, // 4 years
-    initialUnlockPercent: 0,
+    cliffDuration: HOUR, // 1-hour cliff
+    periodDuration: MINUTE, // 1-minute periods
+    periodCount: 1440 * 2, // 2 days in minutes
+    initialUnlockPercent: 1000,
   },
   {
     name: "Advisor Pool",
-    cliffDuration: MONTH, // 1-month cliff
-    periodDuration: WEEK, // weekly periods
-    periodCount: 52, // 1 year
-    initialUnlockPercent: 0,
+    cliffDuration: DAY, // 1-day cliff
+    periodDuration: MINUTE, // 1-minute periods
+    periodCount: 1440 * 3, // 3 days in minutes
+    initialUnlockPercent: 2500, // 25% unlocked at start
   },
   {
     name: "Contributor Rewards",
     cliffDuration: 0, // no cliff
-    periodDuration: SECOND, // every second
-    periodCount: 6 * MONTH, // 6 months in seconds
+    periodDuration: MINUTE, // every minute
+    periodCount: 1440 * 5, // 5 days in minutes
     initialUnlockPercent: 0,
   },
 ] as const;
@@ -67,7 +64,6 @@ async function main(): Promise<void> {
   console.log("Deployer  :", deployer.address);
   console.log("ETH balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)), "ETH\n");
 
-  // ── 1. Deploy LURVesting as UUPS proxy ──────────────────────────────────────
   console.log("1. Deploying LURVesting (UUPS proxy)...");
   const LURVestingFactory = await ethers.getContractFactory("LURVesting");
   const lurVesting = await upgrades.deployProxy(LURVestingFactory, [LUR_TOKEN_ADDRESS, DAO_ADDRESS, deployer.address], {
@@ -79,7 +75,6 @@ async function main(): Promise<void> {
   console.log("   Proxy :", vestingAddress);
   console.log("   Impl  :", vestingImplAddress);
 
-  // ── 2. Create pools ─────────────────────────────────────────────────────────
   console.log("\n2. Creating vesting pools...");
   const poolIds: bigint[] = [];
 
@@ -102,12 +97,11 @@ async function main(): Promise<void> {
     );
   }
 
-  // ── 3. Allocate 100 000 LUR to each recipient for each pool ─────────────────
   console.log("\n3. Allocating tokens (batch per pool)...");
   const lurToken = await ethers.getContractAt("LURToken", LUR_TOKEN_ADDRESS);
   const recipients = [deployer.address, EXTRA_RECIPIENT];
-  const batchTotal = ALLOCATION_AMOUNT * BigInt(recipients.length); // 200 000 per pool
-  const start = 0; // use block.timestamp at tx time
+  const batchTotal = ALLOCATION_AMOUNT * BigInt(recipients.length);
+  const start = 0;
 
   for (let i = 0; i < poolIds.length; i++) {
     const poolId = poolIds[i];
@@ -125,7 +119,6 @@ async function main(): Promise<void> {
     );
   }
 
-  // ── 4. Etherscan verification ────────────────────────────────────────────────
   const VERIFY_DELAY_MS = 30_000;
   console.log(`\n4. Waiting ${VERIFY_DELAY_MS / 1000}s before Etherscan verification...`);
   await sleep(VERIFY_DELAY_MS);
@@ -143,7 +136,6 @@ async function main(): Promise<void> {
     }
   }
 
-  // ── Summary ──────────────────────────────────────────────────────────────────
   console.log("\n=== Deployment Summary ===");
   console.log("LURToken (existing)   :", LUR_TOKEN_ADDRESS);
   console.log("LURDAO   (existing)   :", DAO_ADDRESS);

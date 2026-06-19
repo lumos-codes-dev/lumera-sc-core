@@ -84,11 +84,13 @@ contract LURVesting is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeabl
         VestingStorage storage $ = _vestingStorage();
         $.token = token;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, dao);
-        _grantRole(MANAGER_ROLE, dao);
+        _grantRole(DEFAULT_ADMIN_ROLE, vestingManager);
         _grantRole(MANAGER_ROLE, vestingManager);
+        _grantRole(MANAGER_ROLE, dao);
 
         _setRoleAdmin(MANAGER_ROLE, DEFAULT_ADMIN_ROLE);
+        _setRoleAdmin(PAUSER_ROLE, MANAGER_ROLE);
+        _setRoleAdmin(WITHDRAWER_ROLE, MANAGER_ROLE);
     }
 
     /**
